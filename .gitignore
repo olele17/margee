@@ -5,3 +5,7 @@ dist/
 .DS_Store
 .env
 .env.local
+
+# Config locale des outils (contient des jetons d acces)
+.mcp.json
+mcp_config.json
