@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AuthShell from '../components/AuthShell';
 
 export default function Signup() {
   const { doSignup, doLogin } = useAuth();
@@ -33,42 +34,38 @@ export default function Signup() {
   };
 
   return (
-    <div className="auth-bg">
-      <div className="auth-card">
-        <div className="auth-head">
-          <div className="auth-logo">⚡ EASY SWAP</div>
-          <div className="auth-tagline">Crée ton espace business</div>
+    <AuthShell label="Inscription" title="Crée ton espace business" subtitle="Quelques infos et tu enregistres ta première vente.">
+      <form className="au-form" onSubmit={submit}>
+        <div className="au-row-2">
+          <div className="au-field">
+            <label htmlFor="su-owner">Ton nom</label>
+            <input id="su-owner" autoComplete="name" value={form.ownerName} onChange={set('ownerName')} placeholder="Prénom Nom" />
+          </div>
+          <div className="au-field">
+            <label htmlFor="su-phone">Téléphone</label>
+            <input id="su-phone" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} placeholder="77 000 00 00" />
+          </div>
         </div>
-        <form className="auth-body" onSubmit={submit}>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>Ton nom</label>
-            <input value={form.ownerName} onChange={set('ownerName')} placeholder="Prénom Nom" />
-          </div>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>Nom de ton business</label>
-            <input value={form.businessName} onChange={set('businessName')} placeholder="Ex: Fatou Boutique" />
-          </div>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>Téléphone</label>
-            <input value={form.phone} onChange={set('phone')} placeholder="77 000 00 00" />
-          </div>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>Email</label>
-            <input type="email" value={form.email} onChange={set('email')} placeholder="toi@email.com" />
-          </div>
-          <div className="field" style={{ marginBottom: 6 }}>
-            <label>Mot de passe</label>
-            <input type="password" value={form.password} onChange={set('password')} placeholder="••••••••" />
-          </div>
-          <button className="btn btn-dark btn-lg btn-block" style={{ marginTop: 16 }} disabled={loading}>
-            {loading ? 'Création…' : 'Créer mon compte'}
-          </button>
-          {err && <div className="auth-err">{err}</div>}
-          <div className="auth-switch">
-            Déjà inscrit ? <Link to="/connexion">Se connecter</Link>
-          </div>
-        </form>
+        <div className="au-field">
+          <label htmlFor="su-business">Nom de ta boutique</label>
+          <input id="su-business" autoComplete="organization" value={form.businessName} onChange={set('businessName')} placeholder="Ex : Fatou Boutique" />
+        </div>
+        <div className="au-field">
+          <label htmlFor="su-email">Email</label>
+          <input id="su-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} placeholder="toi@email.com" />
+        </div>
+        <div className="au-field">
+          <label htmlFor="su-password">Mot de passe</label>
+          <input id="su-password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="••••••••" />
+        </div>
+        {err && <div className="au-err" role="alert">{err}</div>}
+        <button className="au-btn au-btn--gold" disabled={loading}>
+          {loading ? 'Création…' : 'Créer mon compte'}
+        </button>
+      </form>
+      <div className="au-switch">
+        Déjà inscrit ? <Link to="/connexion">Se connecter</Link>
       </div>
-    </div>
+    </AuthShell>
   );
 }

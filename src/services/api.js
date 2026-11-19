@@ -20,6 +20,8 @@
  * ══════════════════════════════════════════════════════════════════
  */
 
+import { buildDemoData, DEMO_EMAIL, DEMO_PASSWORD } from './demoData';
+
 const DB_KEY = 'easyswap_db_v1';
 const SESSION_KEY = 'easyswap_session';
 
@@ -77,6 +79,28 @@ export async function login(email, password) {
   return sanitize(account);
 }
 
+/**
+ * Compte de démonstration : crée (ou remet à zéro) un compte Elite rempli
+ * de données d'exemple, puis renvoie ses identifiants pour se connecter.
+ */
+export async function resetDemoAccount() {
+  await delay();
+  const db = loadDB();
+  const existing = db.accounts.find((a) => a.email === DEMO_EMAIL);
+  const id = existing ? existing.id : uid();
+  const demo = buildDemoData(id);
+  db.accounts = [...db.accounts.filter((a) => a.id !== id), demo.account];
+  db.products[id] = demo.products;
+  db.sales[id] = demo.sales;
+  db.ads[id] = demo.ads;
+  db.investments[id] = demo.investments;
+  db.expenses = db.expenses || {};
+  db.expenses[id] = demo.expenses;
+  db.receiptSeq[id] = demo.receiptSeq;
+  saveDB(db);
+  return { email: DEMO_EMAIL, password: DEMO_PASSWORD };
+}
+
 export function logout() {
   localStorage.removeItem(SESSION_KEY);
 }
@@ -106,11 +130,64 @@ export async function updateReceiptSettings(accountId, settings) {
   return sanitize(account);
 }
 
+// ── INFORMATIONS DE L'ENTREPRISE (nom, propriétaire, téléphone) ──
+// L'email de connexion n'est pas modifié ici : l'email affiché sur les
+// reçus est stocké à part dans receiptSettings.email.
+export async function updateBusinessInfo(accountId, info) {
+  await delay();
+  const db = loadDB();
+  const account = db.accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error('Compte introuvable.');
+  if ('businessName' in info) {
+    if (!String(info.businessName).trim()) throw new Error('Le nom de l\'entreprise est obligatoire.');
+    account.businessName = String(info.businessName).trim();
+  }
+  if ('ownerName' in info) account.ownerName = String(info.ownerName).trim();
+  if ('phone' in info) account.phone = String(info.phone).trim();
+  saveDB(db);
+  return sanitize(account);
+}
+
 // ── ABONNEMENT / PAIEMENT (Bictorys — à brancher côté backend) ──
+// Source unique des plans : la landing, l'abonnement, les paramètres et
+// l'admin lisent tous cet objet. price = prix mensuel en F CFA.
+// receiptLimit = reçus autorisés (par mois pour les plans payants),
+// null = illimité.
 export const PLANS = {
-  mensuel: { label: 'Mensuel', price: 5000, days: 30 },
-  annuel: { label: 'Annuel', price: 50000, days: 365 },
+  free: {
+    label: 'Free', price: 0, days: null, receiptLimit: 3,
+    features: [
+      '3 reçus PDF pour tester',
+      'Produits et coût de revient',
+      'Ventes avec calcul du bénéfice',
+      'Tableau de bord',
+    ],
+  },
+  pro: {
+    label: 'Pro', price: 2400, days: 30, receiptLimit: 30,
+    features: [
+      '30 reçus PDF par mois',
+      'Produits, ventes et marge',
+      'Pubs dépensées et dépenses',
+      'Investissements et ROI',
+      'Comparaison mois par mois',
+    ],
+  },
+  elite: {
+    label: 'Elite', price: 4500, days: 30, receiptLimit: null, highlight: true,
+    features: [
+      'Reçus PDF illimités',
+      'Tout le plan Pro',
+      'Reçus personnalisés : logo et signature',
+      'Analyses de ton tableau de bord',
+    ],
+  },
 };
+
+// Paiement à l'année : 12 mois pour le prix de 10 (2 mois offerts).
+export const ANNUAL_MONTHS_PAID = 10;
+export const ANNUAL_DAYS = 365;
+export const annualPrice = (plan) => plan.price * ANNUAL_MONTHS_PAID;
 
 /**
  * TODO BACKEND : cette fonction doit appeler ton endpoint backend
@@ -123,15 +200,23 @@ export const PLANS = {
  * En attendant le backend, cette version simule une activation
  * immédiate pour pouvoir tester tout le frontend.
  */
-export async function subscribe(accountId, planKey) {
+export async function subscribe(accountId, planKey, billing = 'monthly') {
   await delay(300);
   const db = loadDB();
   const account = db.accounts.find((a) => a.id === accountId);
   if (!account) throw new Error('Compte introuvable.');
   const plan = PLANS[planKey];
   if (!plan) throw new Error('Plan invalide.');
-  const expiresAt = new Date(Date.now() + plan.days * 86400000).toISOString();
-  account.subscription = { status: 'active', plan: planKey, expiresAt };
+  const yearly = billing === 'yearly' && plan.price > 0;
+  const days = yearly ? ANNUAL_DAYS : plan.days;
+  const expiresAt = days ? new Date(Date.now() + days * 86400000).toISOString() : null;
+  account.subscription = {
+    status: 'active',
+    plan: planKey,
+    billing: yearly ? 'yearly' : 'monthly',
+    amountPaid: yearly ? annualPrice(plan) : plan.price,
+    expiresAt,
+  };
   saveDB(db);
   return sanitize(account);
 }

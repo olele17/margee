@@ -25,6 +25,9 @@ export default function Sales() {
   }, [searchParams]);
 
   const product = products.find((p) => p.id === form.productId);
+  const previewProfit = product
+    ? Number(form.qty || 0) * (product.price - product.costPrice) - (form.deliveryPaidByClient ? 0 : Number(form.deliveryCost || 0))
+    : 0;
 
   const submit = async () => {
     if (!product || !form.qty) return;
@@ -64,7 +67,11 @@ export default function Sales() {
         s.productName?.toLowerCase().includes(needle)
       );
     })
-    .sort((a, b) => b.date.localeCompare(a.date));
+    // Plus récentes en premier ; à date égale, la dernière enregistrée en haut
+    .sort((a, b) =>
+      b.date.localeCompare(a.date) ||
+      (b.createdAt || '').localeCompare(a.createdAt || '') ||
+      (b.receiptNumber || '').localeCompare(a.receiptNumber || ''));
 
   return (
     <div className="page-content">
@@ -95,8 +102,8 @@ export default function Sales() {
       </div>
 
       {lastReceipt && (
-        <div className="form-card" style={{ borderTopColor: '#2D6A4F' }}>
-          <div className="form-card-title"><i className="ti ti-circle-check" style={{ color: '#2D6A4F' }} /> Vente enregistrée — reçu {lastReceipt.receiptNumber}</div>
+        <div className="form-card" style={{ borderTopColor: 'var(--gold)' }}>
+          <div className="form-card-title"><i className="ti ti-circle-check" style={{ color: 'var(--gold)' }} /> Vente enregistrée — reçu {lastReceipt.receiptNumber}</div>
           <div className="form-actions" style={{ marginTop: 0 }}>
             <button className="btn btn-dark" onClick={() => downloadReceiptPdf(account, lastReceipt)}>
               <i className="ti ti-file-invoice" /> Télécharger le reçu (PDF)
@@ -145,9 +152,7 @@ export default function Sales() {
                 </span>
               )}
               <span>
-                Bénéfice : <strong>
-                  {fmt(Number(form.qty || 0) * (product.price - product.costPrice) - (form.deliveryPaidByClient ? 0 : Number(form.deliveryCost || 0)))}
-                </strong>
+                Bénéfice : <strong className={previewProfit >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(previewProfit)}</strong>
               </span>
             </div>
           )}
@@ -172,7 +177,7 @@ export default function Sales() {
                 return (
                   <tr key={s.id}>
                     <td>{s.date}</td>
-                    <td>{s.receiptNumber}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{s.receiptNumber}</td>
                     <td className="bold">{s.productName}</td>
                     <td>
                       {s.clientName || '—'}
@@ -190,11 +195,27 @@ export default function Sales() {
                         </>
                       ) : '—'}
                     </td>
-                    <td style={{ color: benef >= 0 ? 'var(--emerald-dark)' : '#dc2626', fontWeight: 700 }}>{fmt(benef)}</td>
+                    <td className={benef >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(benef)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 5 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => downloadReceiptPdf(account, s)}><i className="ti ti-download" /></button>
-                        <button className="btn btn-danger btn-sm" onClick={() => remove(s.id)}><i className="ti ti-trash" /></button>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--download"
+                          onClick={() => downloadReceiptPdf(account, s)}
+                          aria-label={`Télécharger le reçu ${s.receiptNumber}`}
+                          title={`Télécharger le reçu ${s.receiptNumber} (PDF)`}
+                        >
+                          <i className="ti ti-download" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--danger"
+                          onClick={() => remove(s.id)}
+                          aria-label={`Supprimer la vente ${s.receiptNumber}`}
+                          title="Supprimer la vente"
+                        >
+                          <i className="ti ti-trash" aria-hidden="true" />
+                        </button>
                       </div>
                     </td>
                   </tr>

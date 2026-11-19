@@ -13,9 +13,35 @@ function formatDateFr(dateStr) {
   return `${String(d).padStart(2, '0')} ${FULL_MONTHS[m - 1]} ${y}`;
 }
 
-const EMERALD = [21, 83, 54];
-const GRAY_TEXT = [110, 110, 110];
-const LIGHT_BG = [244, 247, 245];
+// Palette Margee+
+const INK = [20, 22, 28];          // #14161C
+const GOLD = [212, 160, 58];       // #D4A03A
+const GOLD_DARK = [148, 106, 18];  // #946A12
+const GRAY_TEXT = [91, 100, 114];  // #5B6472
+const LIGHT_BG = [249, 244, 234];  // #F9F4EA
+const NOTE_BG = [245, 236, 217];   // #F5ECD9
+const LINE = [233, 227, 214];      // #E9E3D6
+
+// Format d'image d'après l'en-tête du data URL (PNG, JPEG, WEBP)
+const imageFormat = (dataUrl) => {
+  const m = /^data:image\/(png|jpe?g|webp)/i.exec(dataUrl || '');
+  if (!m) return 'PNG';
+  return m[1].toLowerCase().startsWith('jp') ? 'JPEG' : m[1].toUpperCase();
+};
+
+// Ajoute une image dans une boîte max (largeur x hauteur) sans la déformer,
+// alignée en haut à droite de la boîte.
+function addImageFit(doc, dataUrl, rightEdge, top, maxW, maxH) {
+  try {
+    const { width, height } = doc.getImageProperties(dataUrl);
+    const ratio = Math.min(maxW / width, maxH / height);
+    const w = width * ratio;
+    const h = height * ratio;
+    doc.addImage(dataUrl, imageFormat(dataUrl), rightEdge - w, top, w, h, undefined, 'FAST');
+  } catch (e) {
+    /* image illisible : on l'ignore pour ne pas bloquer le reçu */
+  }
+}
 
 // jsPDF (polices standard) n'affiche pas l'espace fine insécable utilisée par
 // toLocaleString('fr-FR') — on la remplace par une espace normale pour le PDF.
@@ -23,6 +49,7 @@ const f = (n) => fmt(n).replace(/[   ]/g, ' ');
 
 export function downloadReceiptPdf(account, sale) {
   const rs = account.receiptSettings || {};
+  const contactEmail = rs.email || account.email;
   const doc = new jsPDF({ format: 'a5', unit: 'mm' });
   const pageW = doc.internal.pageSize.getWidth();
   const marginX = 14;
@@ -32,11 +59,11 @@ export function downloadReceiptPdf(account, sale) {
   // ── Titre + logo ──────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(...EMERALD);
+  doc.setTextColor(...INK);
   doc.text('REÇU DE PAIEMENT', marginX, y);
 
   if (rs.logo) {
-    try { doc.addImage(rs.logo, 'PNG', rightX - 18, y - 12, 18, 18, undefined, 'FAST'); } catch (e) { /* logo illisible, on ignore */ }
+    addImageFit(doc, rs.logo, rightX, y - 12, 32, 18);
   }
 
   y += 6;
@@ -46,7 +73,7 @@ export function downloadReceiptPdf(account, sale) {
   doc.text(`Numéro : ${sale.receiptNumber}`, marginX, y);
 
   y += 6;
-  doc.setDrawColor(225, 225, 225);
+  doc.setDrawColor(...LINE);
   doc.line(marginX, y, rightX, y);
 
   // ── Bloc entreprise / date ──────────────────────────────────
@@ -64,7 +91,7 @@ export function downloadReceiptPdf(account, sale) {
   let yLeft = y + 5;
   if (rs.address) { doc.text(rs.address, marginX, yLeft); yLeft += 5; }
   if (account.phone) { doc.text(`Tél : ${account.phone}`, marginX, yLeft); yLeft += 5; }
-  if (account.email) { doc.text(`Email : ${account.email}`, marginX, yLeft); yLeft += 5; }
+  if (contactEmail) { doc.text(`Email : ${contactEmail}`, marginX, yLeft); yLeft += 5; }
 
   doc.text(`Date du reçu : ${formatDateFr(sale.date)}`, rightX, y + 5, { align: 'right' });
 
@@ -92,7 +119,7 @@ export function downloadReceiptPdf(account, sale) {
   y += clientBoxH + 10;
 
   // ── Table description / montant ─────────────────────────
-  doc.setFillColor(...EMERALD);
+  doc.setFillColor(...INK);
   doc.rect(marginX, y, rightX - marginX, 8, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
@@ -117,17 +144,17 @@ export function downloadReceiptPdf(account, sale) {
     doc.setFont('helvetica', 'normal');
   });
   y += 6;
-  doc.setDrawColor(230, 230, 230);
+  doc.setDrawColor(...LINE);
   doc.line(marginX, y, rightX, y);
 
   // ── Total payé ───────────────────────────────────────────
   const total = rows.reduce((a, r) => a + r.amount, 0);
   y += 8;
-  doc.setFillColor(...EMERALD);
+  doc.setFillColor(...GOLD);
   doc.rect(marginX, y - 6, rightX - marginX, 10, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...INK);
   doc.text('TOTAL PAYÉ :', marginX + 4, y + 1);
   doc.text(f(total), rightX - 4, y + 1, { align: 'right' });
   y += 12;
@@ -147,7 +174,7 @@ export function downloadReceiptPdf(account, sale) {
   if (rs.note) {
     const noteLines = doc.splitTextToSize(rs.note, rightX - marginX - 8);
     const noteBoxH = 8 + noteLines.length * 4.2;
-    doc.setFillColor(235, 242, 250);
+    doc.setFillColor(...NOTE_BG);
     doc.rect(marginX, y, rightX - marginX, noteBoxH, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
@@ -165,7 +192,7 @@ export function downloadReceiptPdf(account, sale) {
   // ── Merci ──────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(...EMERALD);
+  doc.setTextColor(...GOLD_DARK);
   doc.text('MERCI POUR VOTRE CONFIANCE !', pageW / 2, y, { align: 'center' });
   y += 12;
 
@@ -177,7 +204,7 @@ export function downloadReceiptPdf(account, sale) {
 
   doc.text('Pour l\'entreprise (Signature et Cachet) :', rightX, y, { align: 'right' });
   if (rs.signatureImage) {
-    try { doc.addImage(rs.signatureImage, 'PNG', rightX - 38, y + 3, 38, 16, undefined, 'FAST'); } catch (e) { /* signature illisible, on ignore */ }
+    addImageFit(doc, rs.signatureImage, rightX, y + 3, 38, 16);
   } else {
     doc.setDrawColor(180, 180, 180);
     doc.line(rightX - 38, y + 16, rightX, y + 16);
@@ -187,7 +214,7 @@ export function downloadReceiptPdf(account, sale) {
   const pageH = doc.internal.pageSize.getHeight();
   doc.setFontSize(7.5);
   doc.setTextColor(150, 150, 150);
-  const footer = [account.businessName, rs.address, account.phone && `Tél : ${account.phone}`, account.email && `Email : ${account.email}`]
+  const footer = [account.businessName, rs.address, account.phone && `Tél : ${account.phone}`, contactEmail && `Email : ${contactEmail}`]
     .filter(Boolean).join('  •  ');
   doc.text(footer, pageW / 2, pageH - 8, { align: 'center', maxWidth: rightX - marginX });
 

@@ -1,390 +1,502 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useBusinessData from '../../hooks/useBusinessData';
-import StatCard from '../../components/StatCard';
-import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, prevMonthKey } from '../../utils/calc';
+import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today } from '../../utils/calc';
+import { downloadReceiptPdf } from '../../utils/receiptPdf';
+import '../../styles/dashboard.css';
 
-const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+/* ── Outils de dates (format AAAA-MM-JJ, heure locale) ──────── */
+const pad = (n) => String(n).padStart(2, '0');
+const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseIso = (s) => new Date(`${s}T00:00:00`);
+const addDays = (s, n) => { const d = parseIso(s); d.setDate(d.getDate() + n); return isoLocal(d); };
+const daysBetween = (a, b) => Math.round((parseIso(b) - parseIso(a)) / 86400000);
+const firstOfMonth = () => `${thisMonth()}-01`;
+const dateFr = (s) => parseIso(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+const dateShort = (s) => parseIso(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
-function isoDaysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+const DAY_SHORT = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const MONTH_SHORT = ['Janv', 'Févr', 'Mars', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
+
+// Couleurs du donut, toutes issues de la palette Margee+
+const DONUT_COLORS = ['#14161C', '#D4A03A', '#946A12', '#5B6472', '#E2C27A', '#B8B2A6'];
+
+// Montant court pour les étiquettes du graphique : 45 k, 1,2 M
+function shortMoney(n) {
+  if (n >= 1e6) return `${(n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M`;
+  if (n >= 1e3) return `${Math.round(n / 1e3)} k`;
+  return String(Math.round(n));
 }
 
-function pctChange(current, previous) {
-  if (!current && !previous) return NaN; // aucune donnée ni ce mois ni le précédent
-  if (!previous) return null; // nouveau ce mois (rien à comparer)
-  return ((current - previous) / previous) * 100;
+function initials(name) {
+  return (name || '?').split(' ').filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function trendLabel(val) {
-  if (Number.isNaN(val)) return 'Pas encore de données';
-  if (val === null) return 'Nouveau ce mois';
-  return `${val >= 0 ? '+' : ''}${val.toFixed(0)}% vs mois dernier`;
+function pctChange(curr, prev) {
+  if (!prev) return null;
+  return ((curr - prev) / Math.abs(prev)) * 100;
 }
 
-function trendPositive(val) {
-  if (Number.isNaN(val) || val === null) return true;
-  return val >= 0;
+/* ── Décor : vagues dorées en bas des cartes ────────────────── */
+function Waves() {
+  return (
+    <svg className="db-waves" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path d="M0 22 C 40 6, 70 6, 110 20 S 180 36, 220 20 S 280 6, 300 16" />
+      <path d="M0 30 C 45 16, 80 18, 120 28 S 190 40, 235 26 S 285 18, 300 26" />
+    </svg>
+  );
 }
 
+function KpiCard({ icon, label, value, trend, negative }) {
+  const hasTrend = trend !== null && trend !== undefined && Number.isFinite(trend);
+  const up = hasTrend && trend >= 0;
+  return (
+    <div className={`db-kpi${negative ? ' db-kpi--negative' : ''}`}>
+      <div className="db-kpi-top">
+        <span className="db-kpi-icon" aria-hidden="true"><i className={`ti ${icon}`} /></span>
+        <div className="db-kpi-text">
+          <div className="db-kpi-value">{value}</div>
+          <div className="db-kpi-label">{label}</div>
+        </div>
+      </div>
+      <div className={`db-kpi-trend ${hasTrend ? (up ? 'up' : 'down') : ''}`}>
+        {hasTrend
+          ? <><i className={`ti ti-arrow-${up ? 'up' : 'down'}-right`} aria-hidden="true" /> {up ? '+' : ''}{trend.toFixed(0)}% vs période précédente</>
+          : 'Pas de comparaison'}
+      </div>
+      <Waves />
+    </div>
+  );
+}
+
+/* ── Graphique en barres : Semaine / Mois / Année ───────────── */
+function buildSeries(sales, mode) {
+  const caOn = (pred) => sales.filter(pred).reduce((a, s) => a + s.qty * s.price, 0);
+  const t = today();
+  if (mode === 'week') {
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = addDays(t, i - 6);
+      return { label: DAY_SHORT[parseIso(day).getDay()], title: dateFr(day), value: caOn((s) => s.date === day), current: day === t };
+    });
+  }
+  if (mode === 'month') {
+    const m = thisMonth();
+    const lastDay = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).getDate();
+    const weeks = [];
+    for (let start = 1, w = 1; start <= lastDay; start += 7, w++) {
+      const end = Math.min(start + 6, lastDay);
+      const from = `${m}-${pad(start)}`;
+      const to = `${m}-${pad(end)}`;
+      weeks.push({ label: `S${w}`, title: `Du ${start} au ${end} ${monthLabel(m)}`, value: caOn((s) => s.date >= from && s.date <= to), current: t >= from && t <= to });
+    }
+    return weeks;
+  }
+  // year : 12 derniers mois
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+    const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+    return { label: MONTH_SHORT[d.getMonth()], title: monthLabel(key), value: caOn((s) => s.date.slice(0, 7) === key), current: i === 11 };
+  });
+}
+
+function SalesChart({ sales }) {
+  const [mode, setMode] = useState('week');
+  const series = useMemo(() => buildSeries(sales, mode), [sales, mode]);
+  const max = Math.max(...series.map((b) => b.value), 1);
+  const total = series.reduce((a, b) => a + b.value, 0);
+
+  return (
+    <section className="db-card db-chart" aria-labelledby="db-chart-title">
+      <div className="db-card-head">
+        <div>
+          <h2 id="db-chart-title" className="db-card-title">Statistique des ventes</h2>
+          <div className="db-card-sub">Chiffre d'affaires · total {fmt(total)}</div>
+        </div>
+        <div className="db-tabs" role="group" aria-label="Période du graphique">
+          {[['week', 'Semaine'], ['month', 'Mois'], ['year', 'Année']].map(([k, l]) => (
+            <button key={k} type="button" className={mode === k ? 'on' : ''} aria-pressed={mode === k} onClick={() => setMode(k)}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="db-bars" role="img" aria-label={`Chiffre d'affaires par ${mode === 'week' ? 'jour' : mode === 'month' ? 'semaine' : 'mois'} : ${series.map((b) => `${b.label} ${fmt(b.value)}`).join(', ')}`}>
+        {series.map((b, i) => (
+          <div key={i} className="db-bar-col" title={`${b.title} : ${fmt(b.value)}`}>
+            <span className="db-bar-value">{b.value > 0 ? shortMoney(b.value) : ''}</span>
+            <div className="db-bar-track">
+              <div className={`db-bar${b.current ? ' db-bar--current' : ''}`} style={{ height: `${Math.max((b.value / max) * 100, b.value > 0 ? 4 : 0)}%` }} />
+            </div>
+            <span className="db-bar-label">{b.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ── Donut : ventes par produit ─────────────────────────────── */
+function ProductDonut({ sales }) {
+  const slices = useMemo(() => {
+    const map = {};
+    sales.forEach((s) => { map[s.productName] = (map[s.productName] || 0) + s.qty * s.price; });
+    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 5).map(([name, value]) => ({ name, value }));
+    const rest = sorted.slice(5).reduce((a, [, v]) => a + v, 0);
+    if (rest > 0) top.push({ name: 'Autres', value: rest });
+    return top;
+  }, [sales]);
+  const total = slices.reduce((a, s) => a + s.value, 0);
+
+  const R = 70;
+  const C = 2 * Math.PI * R;
+  let offset = 0;
+
+  return (
+    <section className="db-card db-donut-card" aria-labelledby="db-donut-title">
+      <div className="db-card-head">
+        <h2 id="db-donut-title" className="db-card-title">Ventes par produit</h2>
+      </div>
+      {total === 0 ? (
+        <div className="db-empty"><i className="ti ti-chart-donut" aria-hidden="true" />Aucune vente sur la période.</div>
+      ) : (
+        <div className="db-donut-body">
+          <ul className="db-legend">
+            {slices.map((s, i) => (
+              <li key={s.name}>
+                <span className="db-legend-dot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} aria-hidden="true" />
+                <span className="db-legend-name">{s.name}</span>
+                <span className="db-legend-pct">{Math.round((s.value / total) * 100)}%</span>
+              </li>
+            ))}
+          </ul>
+          <div className="db-donut">
+            <svg viewBox="0 0 180 180" role="img" aria-label={`Répartition du chiffre d'affaires : ${slices.map((s) => `${s.name} ${Math.round((s.value / total) * 100)}%`).join(', ')}`}>
+              <circle cx="90" cy="90" r={R} fill="none" stroke="#F3ECDA" strokeWidth="30" />
+              {slices.map((s, i) => {
+                const len = (s.value / total) * C;
+                const el = (
+                  <circle
+                    key={s.name}
+                    cx="90" cy="90" r={R} fill="none"
+                    stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
+                    strokeWidth="30"
+                    strokeDasharray={`${Math.max(len - 2, 0)} ${C}`}
+                    strokeDashoffset={-offset}
+                    transform="rotate(-90 90 90)"
+                  >
+                    <title>{`${s.name} : ${fmt(s.value)}`}</title>
+                  </circle>
+                );
+                offset += len;
+                return el;
+              })}
+            </svg>
+            <div className="db-donut-center">
+              <strong>{shortMoney(total)}</strong>
+              <span>F CFA</span>
+            </div>
+          </div>
+        </div>
+      )}
+      <Waves />
+    </section>
+  );
+}
+
+/* ── Page ───────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { account, sales, ads, investments, ready } = useBusinessData();
+
+  // Filtre de dates : brouillon (champs) puis appliqué (bouton Filtrer)
+  const [fromDraft, setFromDraft] = useState(firstOfMonth());
+  const [toDraft, setToDraft] = useState(today());
+  const [range, setRange] = useState({ from: firstOfMonth(), to: today() });
+  const [rangeErr, setRangeErr] = useState('');
+
+  const [q, setQ] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+
+  // Comparaison mensuelle (conservée sous le tableau de bord)
   const [mA, setMA] = useState(thisMonth());
   const [mB, setMB] = useState('');
 
-  const allTime = useMemo(() => computeStats(sales, ads, investments), [sales, ads, investments]);
-  const cm = useMemo(() => computeStats(sales, ads, investments, thisMonth()), [sales, ads, investments]);
-  const pm = useMemo(() => computeStats(sales, ads, investments, prevMonthKey(thisMonth())), [sales, ads, investments]);
+  const inRange = (d, r) => d >= r.from && d <= r.to;
+  const prevRange = useMemo(() => {
+    const len = daysBetween(range.from, range.to) + 1;
+    return { from: addDays(range.from, -len), to: addDays(range.from, -1) };
+  }, [range]);
+
+  const periodSales = useMemo(() => sales.filter((s) => inRange(s.date, range)), [sales, range]);
+  const stats = useMemo(
+    () => computeStats(periodSales, ads.filter((a) => inRange(a.date, range)), investments),
+    [periodSales, ads, investments, range]
+  );
+  const prev = useMemo(
+    () => computeStats(sales.filter((s) => inRange(s.date, prevRange)), ads.filter((a) => inRange(a.date, prevRange)), investments),
+    [sales, ads, investments, prevRange]
+  );
+
+  const recent = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return [...periodSales]
+      .filter((s) => !productFilter || s.productName === productFilter)
+      .filter((s) => !needle || [s.clientName, s.productName, s.receiptNumber, s.clientPhone].some((v) => v?.toLowerCase().includes(needle)))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || '') || (b.receiptNumber || '').localeCompare(a.receiptNumber || ''));
+  }, [periodSales, q, productFilter]);
+
+  const topClients = useMemo(() => {
+    const map = {};
+    periodSales.forEach((s) => {
+      const name = s.clientName?.trim();
+      if (!name) return;
+      map[name] = map[name] || { name, count: 0, total: 0 };
+      map[name].count += 1;
+      map[name].total += s.qty * s.price;
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count || b.total - a.total).slice(0, 6);
+  }, [periodSales]);
+
+  const productNames = useMemo(() => [...new Set(periodSales.map((s) => s.productName))].sort(), [periodSales]);
+
   const byMonth = useMemo(() => groupByMonth(sales, ads), [sales, ads]);
   const months = Object.keys(byMonth).sort().reverse();
   const dA = mA ? computeStats(sales, ads, investments, mA) : null;
   const dB = mB ? computeStats(sales, ads, investments, mB) : null;
 
-  const salesTrend = pctChange(cm.nbSales, pm.nbSales);
-  const caTrend = pctChange(cm.ca, pm.ca);
-  const profitTrend = pctChange(cm.netProfit, pm.netProfit);
-
-  const weekData = useMemo(() => {
-    const days = Array.from({ length: 7 }, (_, i) => isoDaysAgo(6 - i));
-    const values = days.map((day) => sales.filter((s) => s.date === day).reduce((a, s) => a + s.qty * s.price, 0));
-    const max = Math.max(...values, 1);
-    const today = isoDaysAgo(0);
-    return days.map((day, i) => ({
-      day,
-      label: DAY_LABELS[new Date(day + 'T00:00:00').getDay()],
-      value: values[i],
-      heightPct: Math.max((values[i] / max) * 100, 6),
-      isToday: day === today,
-    }));
-  }, [sales]);
-
-  const recentSales = useMemo(
-    () => [...sales].sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date)).slice(0, 4),
-    [sales]
-  );
-
-  const topProducts = useMemo(() => {
-    const map = {};
-    sales.forEach((s) => {
-      const key = s.productId || s.productName;
-      if (!map[key]) map[key] = { name: s.productName, qty: 0, revenue: 0 };
-      map[key].qty += s.qty;
-      map[key].revenue += s.qty * s.price;
-    });
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 4);
-  }, [sales]);
-
-  const marginRate = allTime.ca > 0 ? Math.max(0, Math.min(100, Math.round((allTime.grossProfit / allTime.ca) * 100))) : 0;
+  const applyRange = (e) => {
+    e.preventDefault();
+    if (!fromDraft || !toDraft) { setRangeErr('Choisis une date de début et une date de fin.'); return; }
+    if (fromDraft > toDraft) { setRangeErr('La date de début doit être avant la date de fin.'); return; }
+    setRangeErr('');
+    setRange({ from: fromDraft, to: toDraft });
+  };
+  const resetRange = () => {
+    setFromDraft(firstOfMonth()); setToDraft(today()); setRangeErr('');
+    setRange({ from: firstOfMonth(), to: today() });
+  };
+  const isDefaultRange = range.from === firstOfMonth() && range.to === today();
 
   if (!ready) return null;
 
   return (
-    <div className="page-content">
-      {/* ── HEADER ─────────────────────────────────────────── */}
-      <div className="section-header">
-        <div>
-          <h1 className="section-title">Dashboard</h1>
-          <div className="section-sub">
-            Planifiez, priorisez et suivez vos ventes et projets avec facilité.
-          </div>
+    <div className="page-content db">
+      {/* ── Filtre de dates ─────────────────────────────────── */}
+      <form className="db-filter" onSubmit={applyRange} aria-label="Filtrer par période" noValidate>
+        <label className="db-date">
+          <i className="ti ti-calendar" aria-hidden="true" />
+          <span className="sr-only">Date de début</span>
+          <input type="date" value={fromDraft} max={toDraft || undefined} onChange={(e) => setFromDraft(e.target.value)} />
+        </label>
+        <span className="db-filter-sep" aria-hidden="true">—</span>
+        <label className="db-date">
+          <i className="ti ti-calendar" aria-hidden="true" />
+          <span className="sr-only">Date de fin</span>
+          <input type="date" value={toDraft} min={fromDraft || undefined} onChange={(e) => setToDraft(e.target.value)} />
+        </label>
+        <button type="submit" className="btn btn-dark db-filter-btn">
+          <i className="ti ti-filter" aria-hidden="true" /> Filtrer
+        </button>
+        {!isDefaultRange && (
+          <button type="button" className="btn btn-outline db-filter-btn" onClick={resetRange}>Ce mois-ci</button>
+        )}
+        <span className="db-filter-info">Du {dateFr(range.from)} au {dateFr(range.to)}</span>
+        <Link to="/app/ventes" className="btn btn-primary db-filter-add">
+          <i className="ti ti-plus" aria-hidden="true" /> Ajouter une vente
+        </Link>
+      </form>
+      {rangeErr && <div className="db-filter-err" role="alert">{rangeErr}</div>}
+
+      {/* ── Alerte de déficit sur la période ────────────────── */}
+      {stats.netProfit < 0 && (
+        <div className="deficit-alert" role="alert">
+          <i className="ti ti-alert-triangle" aria-hidden="true" />
+          <span>
+            <strong>Déficit sur la période : {fmt(stats.netProfit)}.</strong>{' '}
+            Tes coûts (produits, pubs, livraisons) dépassent tes ventes.
+          </span>
         </div>
-        <div className="header-actions">
-          <Link to="/app/ventes" className="btn btn-primary">
-            <i className="ti ti-plus" /> Ajouter Vente
-          </Link>
-          <Link to="/app/produits" className="btn btn-outline">
-            <i className="ti ti-package" /> Mes Produits
-          </Link>
-        </div>
+      )}
+
+      {/* ── 4 cartes chiffrées ──────────────────────────────── */}
+      <div className="db-kpis">
+        <KpiCard icon="ti-cash-banknote" label="Chiffre d'affaires" value={fmt(stats.ca)} trend={pctChange(stats.ca, prev.ca)} />
+        <KpiCard
+          icon={stats.netProfit < 0 ? 'ti-trending-down' : 'ti-trending-up'}
+          label="Bénéfice net"
+          value={fmt(stats.netProfit)}
+          trend={pctChange(stats.netProfit, prev.netProfit)}
+          negative={stats.netProfit < 0}
+        />
+        <KpiCard icon="ti-speakerphone" label="Pubs dépensées" value={fmt(stats.adSpend)} trend={pctChange(stats.adSpend, prev.adSpend)} />
+        <KpiCard
+          icon="ti-chart-arrows-vertical"
+          label="ROI"
+          value={`${stats.roi >= 0 ? '+' : ''}${stats.roi.toFixed(1)}%`}
+          trend={null}
+          negative={stats.roi < 0}
+        />
       </div>
 
-      {/* ── KPI GRID (4 Donezo Stat Cards, avec vraies données) ── */}
-      <div className="kpi-grid">
-        <StatCard
-          label="Total Ventes"
-          value={fmtN(allTime.nbSales)}
-          trend={trendLabel(salesTrend)}
-          positive={trendPositive(salesTrend)}
-          highlight
-        />
-        <StatCard
-          label="Chiffre d'Affaires"
-          value={fmt(allTime.ca)}
-          trend={trendLabel(caTrend)}
-          positive={trendPositive(caTrend)}
-        />
-        <StatCard
-          label="Bénéfice Net"
-          value={fmt(allTime.netProfit)}
-          trend={trendLabel(profitTrend)}
-          positive={trendPositive(profitTrend)}
-        />
-        <StatCard
-          label="ROI Global"
-          value={`${allTime.roi >= 0 ? '+' : ''}${allTime.roi.toFixed(1)}%`}
-          trend="Sur la période"
-        />
+      {/* ── Graphique + donut ───────────────────────────────── */}
+      <div className="db-row db-row--charts">
+        <SalesChart sales={sales} />
+        <ProductDonut sales={periodSales} />
       </div>
 
-      {/* ── MIDDLE GRID ──────────────────────────────────────── */}
-      <div className="dashboard-grid-main">
-        {/* Ventes de la semaine — vraies données */}
-        <div className="card-widget">
-          <div className="widget-header">
-            <h3 className="widget-title">Ventes de la Semaine</h3>
-            <span className="widget-action-btn" style={{ cursor: 'default' }}>
-              <span>7 derniers jours</span>
-            </span>
-          </div>
-          <div className="bar-chart-container">
-            {weekData.map((bar, idx) => (
-              <div key={idx} className="bar-column">
-                <div className="bar-pill-track">
-                  {bar.isToday && bar.value > 0 && <div className="bar-tooltip">{fmt(bar.value)}</div>}
-                  <div
-                    className={`bar-pill ${bar.isToday ? 'solid-mint' : bar.value > 0 ? 'solid-dark' : 'striped'}`}
-                    style={{ height: `${bar.heightPct}%` }}
-                  />
-                </div>
-                <span className="bar-day-label">{bar.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Dernières Ventes — remplace le rappel de réunion fictif */}
-        <div className="reminder-card">
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-text)', letterSpacing: 1 }}>
-              Activité récente
+      {/* ── Ventes récentes + top clients ───────────────────── */}
+      <div className="db-row db-row--tables">
+        <section className="db-card db-recent" aria-labelledby="db-recent-title">
+          <div className="db-recent-head">
+            <h2 id="db-recent-title" className="db-recent-title">Ventes récentes</h2>
+            <div className="db-recent-tools">
+              <label className="db-search">
+                <span className="sr-only">Rechercher une vente</span>
+                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher…" />
+                <i className="ti ti-search" aria-hidden="true" />
+              </label>
+              <label className="db-select">
+                <span className="sr-only">Filtrer par produit</span>
+                <select value={productFilter} onChange={(e) => setProductFilter(e.target.value)}>
+                  <option value="">Tous les produits</option>
+                  {productNames.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </label>
             </div>
-            {recentSales.length === 0 ? (
-              <>
-                <div className="reminder-title">Aucune vente enregistrée</div>
-                <div className="reminder-time">Enregistrez votre première vente pour voir l'activité ici.</div>
-              </>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
-                {recentSales.map((s) => (
-                  <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark-text)' }}>{s.productName}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--muted-text)' }}>
-                        {s.clientName || 'Client'} · {s.date}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--emerald-dark)', whiteSpace: 'nowrap' }}>
-                      {fmt(s.qty * s.price)}
-                    </div>
-                  </div>
+          </div>
+          <div className="db-table-scroll">
+            <table className="db-table">
+              <thead>
+                <tr>
+                  <th>Client</th><th>Produit</th><th>Date</th><th>Reçu</th><th>Montant</th><th>Téléphone</th><th><span className="sr-only">Reçu PDF</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.length === 0 && (
+                  <tr><td colSpan={7}><div className="db-empty">{q || productFilter ? 'Aucune vente ne correspond.' : 'Aucune vente sur la période.'}</div></td></tr>
+                )}
+                {recent.slice(0, 8).map((s, i) => (
+                  <tr key={s.id} className={i === 0 && !q && !productFilter ? 'db-row-latest' : ''}>
+                    <td>
+                      <span className="db-person">
+                        <span className="db-avatar" aria-hidden="true">{initials(s.clientName)}</span>
+                        {s.clientName || '—'}
+                      </span>
+                    </td>
+                    <td>{s.productName}</td>
+                    <td className="db-nowrap" title={dateFr(s.date)}>{dateShort(s.date)}</td>
+                    <td className="db-nowrap">{s.receiptNumber}</td>
+                    <td className="db-nowrap db-strong">{fmt(s.qty * s.price)}</td>
+                    <td className="db-nowrap">{s.clientPhone || '—'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--download db-dl"
+                        onClick={() => downloadReceiptPdf(account, s)}
+                        aria-label={`Télécharger le reçu ${s.receiptNumber}`}
+                        title={`Télécharger le reçu ${s.receiptNumber} (PDF)`}
+                      >
+                        <i className="ti ti-download" aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
-          <Link to="/app/ventes" className="reminder-btn">
-            <i className="ti ti-receipt" /> Voir toutes les ventes
-          </Link>
-        </div>
+          {recent.length > 8 && (
+            <Link to="/app/ventes" className="db-more">Voir les {fmtN(recent.length)} ventes <i className="ti ti-arrow-right" aria-hidden="true" /></Link>
+          )}
+        </section>
+
+        <section className="db-card db-top" aria-labelledby="db-top-title">
+          <div className="db-top-head">
+            <h2 id="db-top-title">Top clients</h2>
+            <span>Achats</span>
+          </div>
+          {topClients.length === 0 ? (
+            <div className="db-empty">Aucun client sur la période.</div>
+          ) : (
+            <ol className="db-top-list">
+              {topClients.map((c) => (
+                <li key={c.name}>
+                  <span className="db-avatar db-avatar--gold" aria-hidden="true">{initials(c.name)}</span>
+                  <span className="db-top-name">
+                    {c.name}
+                    <small>{fmt(c.total)}</small>
+                  </span>
+                  <span className="db-top-count" aria-label={`${c.count} achats`}>{c.count}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
       </div>
 
-      {/* ── BOTTOM GRID ──────────────────────────────────────── */}
-      <div className="dashboard-grid-bottom">
-        {/* Meilleurs Produits — remplace la fausse liste d'équipe */}
-        <div className="card-widget">
-          <div className="widget-header">
-            <h3 className="widget-title">Meilleurs Produits</h3>
-            <Link to="/app/produits" className="widget-action-btn">
-              <i className="ti ti-package" /> Voir les produits
-            </Link>
-          </div>
-          <div className="team-list">
-            {topProducts.length === 0 && (
-              <div className="empty-state">
-                <i className="ti ti-package" />
-                <p>Aucune vente pour l'instant.</p>
-              </div>
-            )}
-            {topProducts.map((p, i) => (
-              <div key={i} className="team-item">
-                <div className="team-user">
-                  <div className="team-avatar">{i + 1}</div>
-                  <div>
-                    <div className="team-name">{p.name}</div>
-                    <div className="team-role">{fmtN(p.qty)} unité(s) vendue(s)</div>
-                  </div>
-                </div>
-                <span className="status-badge completed">{fmt(p.revenue)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Column: Gauge (marge réelle) + Résumé du mois */}
-        <div className="dashboard-col-right">
-          {/* Taux de marge — remplace la fausse "progression projets" */}
-          <div className="card-widget" style={{ padding: '20px' }}>
-            <div className="widget-header" style={{ marginBottom: 10 }}>
-              <h3 className="widget-title">Taux de Marge</h3>
-            </div>
-            <div className="gauge-container">
-              <div className="gauge-svg-wrap">
-                <svg width="180" height="95" viewBox="0 0 180 95">
-                  <path
-                    d="M 15 85 A 70 70 0 0 1 165 85"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="18"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d={describeGaugeArc(marginRate)}
-                    fill="none"
-                    stroke="#155336"
-                    strokeWidth="18"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="gauge-center-text">
-                  <div className="gauge-percent">{marginRate}%</div>
-                  <div className="gauge-sub">Sur le chiffre d'affaires</div>
-                </div>
-              </div>
-              <div className="gauge-legends">
-                <div className="gauge-legend-item">
-                  <span className="gauge-dot completed" /> Marge ({fmt(allTime.grossProfit)})
-                </div>
-                <div className="gauge-legend-item">
-                  <span className="gauge-dot pending" /> Coût produits ({fmt(allTime.cost)})
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Résumé du mois — remplace le chrono de session fictif */}
-          <div className="time-tracker-card">
-            <div className="time-tracker-header">Résumé du mois — {monthLabel(thisMonth())}</div>
-            <div className="time-tracker-display" style={{ fontSize: 34 }}>{fmt(cm.netProfit)}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 18, gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>CA</div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>{fmt(cm.ca)}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>Pubs</div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>{fmt(cm.adSpend)}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>Investi (total)</div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>{fmt(allTime.totalInvested)}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── MONTHLY COMPARISON TABLE (Preserved & Styled) ───── */}
-      <div className="card-widget" style={{ marginTop: 24 }}>
-        <div className="widget-header">
-          <h3 className="widget-title">Comparaison Mensuelle</h3>
+      {/* ── Comparaison mensuelle ───────────────────────────── */}
+      <section className="db-card db-compare" aria-labelledby="db-compare-title">
+        <div className="db-card-head">
+          <h2 id="db-compare-title" className="db-card-title">Comparaison mensuelle</h2>
           <div className="month-compare-controls">
-            <select
-              value={mA}
-              onChange={(e) => setMA(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 13 }}
-            >
-              {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+            <select value={mA} onChange={(e) => setMA(e.target.value)} aria-label="Premier mois">
+              {(months.includes(thisMonth()) ? months : [thisMonth(), ...months]).map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
             </select>
-            <span style={{ fontSize: 12, color: 'var(--muted-text)' }}>vs</span>
-            <select
-              value={mB}
-              onChange={(e) => setMB(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 13 }}
-            >
-              <option value="">-- Choisir un 2ème mois --</option>
+            <span>vs</span>
+            <select value={mB} onChange={(e) => setMB(e.target.value)} aria-label="Second mois">
+              <option value="">Choisir un 2e mois</option>
               {months.filter((m) => m !== mA).map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
             </select>
           </div>
         </div>
 
-        {dB ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 12 }}>
+        {dB && (
+          <div className="db-compare-grid">
             {[
-              { label: 'Chiffre d\'Affaires', a: dA.ca, b: dB.ca },
-              { label: 'Bénéfice Net', a: dA.netProfit, b: dB.netProfit },
-              { label: 'Nombre de Ventes', a: dA.nbSales, b: dB.nbSales, isCount: true },
+              { label: "Chiffre d'affaires", a: dA.ca, b: dB.ca },
+              { label: 'Bénéfice net', a: dA.netProfit, b: dB.netProfit },
+              { label: 'Nombre de ventes', a: dA.nbSales, b: dB.nbSales, isCount: true },
             ].map((row) => {
               const diff = row.a - row.b;
-              const pct = row.b ? Math.round((diff / row.b) * 100) : 0;
+              const pct = row.b ? Math.round((diff / Math.abs(row.b)) * 100) : 0;
               const pos = diff >= 0;
               return (
-                <div key={row.label} style={{ background: 'var(--bg-page)', borderRadius: 12, padding: 16, border: '1px solid var(--border-light)' }}>
-                  <div style={{ fontSize: 12, color: 'var(--muted-text)', marginBottom: 6 }}>{row.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark-text)' }}>
-                    {row.isCount ? fmtN(row.a) : fmt(row.a)}
-                  </div>
-                  <div style={{ fontSize: 12, color: pos ? 'var(--emerald-dark)' : '#dc2626', fontWeight: 700, marginTop: 4 }}>
+                <div key={row.label} className="db-compare-item">
+                  <div className="db-compare-label">{row.label}</div>
+                  <div className={`db-compare-value${!row.isCount && row.a < 0 ? ' amount-neg' : ''}`}>{row.isCount ? fmtN(row.a) : fmt(row.a)}</div>
+                  <div className={pos ? 'amount-pos' : 'amount-neg'}>
                     {pos ? '+' : ''}{row.isCount ? fmtN(diff) : fmt(diff)} ({pos ? '+' : ''}{pct}%)
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <div style={{ padding: '16px 0', color: 'var(--muted-text)', fontSize: 13 }}>
-            Sélectionnez un second mois ci-dessus pour afficher la comparaison détaillée.
-          </div>
         )}
 
         {months.length > 0 && (
-          <div className="table-wrap" style={{ marginTop: 20 }}>
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Mois</th>
-                    <th>Ventes</th>
-                    <th>Chiffre d'Affaires</th>
-                    <th>Pubs</th>
-                    <th>Bénéfice Net</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {months.map((m) => {
-                    const d = byMonth[m];
-                    const net = d.ca - d.cost - d.ads - d.delivery;
-                    return (
-                      <tr key={m}>
-                        <td className="bold">
-                          {monthLabel(m)}
-                          {m === thisMonth() && <span className="status-badge completed" style={{ marginLeft: 8 }}>EN COURS</span>}
-                        </td>
-                        <td>{fmtN(d.nb)}</td>
-                        <td className="bold">{fmt(d.ca)}</td>
-                        <td>{fmt(d.ads)}</td>
-                        <td style={{ fontWeight: 700, color: net >= 0 ? 'var(--emerald-dark)' : '#dc2626' }}>
-                          {fmt(net)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          <div className="db-table-scroll">
+            <table className="db-table">
+              <thead><tr><th>Mois</th><th>Ventes</th><th>Chiffre d'affaires</th><th>Pubs</th><th>Bénéfice net</th></tr></thead>
+              <tbody>
+                {months.map((m) => {
+                  const d = byMonth[m];
+                  const net = d.ca - d.cost - d.ads - d.delivery;
+                  return (
+                    <tr key={m}>
+                      <td className="db-strong">
+                        {monthLabel(m)}
+                        {m === thisMonth() && <span className="status-badge completed" style={{ marginLeft: 8 }}>En cours</span>}
+                      </td>
+                      <td>{fmtN(d.nb)}</td>
+                      <td className="db-strong">{fmt(d.ca)}</td>
+                      <td>{fmt(d.ads)}</td>
+                      <td className={net >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(net)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
-}
-
-// Décrit l'arc SVG du gauge demi-cercle en fonction d'un pourcentage 0-100
-function describeGaugeArc(pct) {
-  const cx = 90, cy = 85, r = 70;
-  const angleDeg = 180 - (pct / 100) * 180; // 180° (gauche, départ) → 0° (droite, fin)
-  const angleRad = (angleDeg * Math.PI) / 180;
-  const x = cx + r * Math.cos(angleRad);
-  const y = cy - r * Math.sin(angleRad);
-  return `M 15 85 A 70 70 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)}`;
 }

@@ -146,7 +146,7 @@ export default function Expenses() {
                 <div key={row.label} style={{ background: 'var(--bg-page)', borderRadius: 12, padding: 16, border: '1px solid var(--border-light)' }}>
                   <div style={{ fontSize: 12, color: 'var(--muted-text)', marginBottom: 6 }}>{row.label}</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark-text)' }}>{fmt(row.a)}</div>
-                  <div style={{ fontSize: 12, color: worse ? '#dc2626' : 'var(--emerald-dark)', fontWeight: 700, marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: worse ? 'var(--danger)' : 'var(--success)', fontWeight: 700, marginTop: 4 }}>
                     {diff >= 0 ? '+' : ''}{fmt(diff)} ({diff >= 0 ? '+' : ''}{pct}%)
                   </div>
                 </div>
@@ -174,7 +174,7 @@ export default function Expenses() {
                   <td>{e.date}</td>
                   <td className="bold">{e.description}</td>
                   <td>
-                    <span className={`status-badge ${e.type === 'actif' ? 'completed' : 'pending'}`}>
+                    <span className={`status-badge ${e.type === 'actif' ? 'success' : 'danger'}`}>
                       {e.type === 'actif' ? 'Actif' : 'Passif'}
                     </span>
                   </td>

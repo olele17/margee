@@ -1,27 +1,49 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import useBusinessData from '../hooks/useBusinessData';
 import { generateInsights, generateActivity } from '../utils/insights';
+
+const PAGE_TITLES = {
+  '/app/dashboard': 'Dashboard',
+  '/app/produits': 'Produits',
+  '/app/ventes': 'Ventes',
+  '/app/pubs': 'Pubs',
+  '/app/depenses': 'Dépenses',
+  '/app/investissements': 'Investissements',
+  '/app/parametres': 'Paramètres',
+};
 
 const TYPE_ICON_CLASS = { up: 'notif-icon up', down: 'notif-icon down', warning: 'notif-icon warning', info: 'notif-icon info' };
 
 export default function AppLayout() {
   const { account } = useAuth();
   const { sales, ads, investments, ready } = useBusinessData();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Margee+';
+  const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | 'messages' | 'notifications'
   const panelRef = useRef(null);
 
-  const ownerName = account?.ownerName || 'Totok Michael';
-  const ownerEmail = account?.email || 'tmichael20@mail.com';
+  const ownerName = account?.ownerName || account?.businessName || 'Mon compte';
+  const ownerEmail = account?.email || '';
   const initials = ownerName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .substring(0, 2)
     .toUpperCase();
+
+  // Recherche globale : ouvre la page Ventes filtrée (reçu, client ou produit)
+  const submitSearch = (e) => {
+    e.preventDefault();
+    const q = search.trim();
+    navigate(q ? `/app/ventes?q=${encodeURIComponent(q)}` : '/app/ventes');
+  };
 
   const insights = useMemo(() => (ready ? generateInsights(sales, ads, investments) : []), [ready, sales, ads, investments]);
   const activity = useMemo(() => (ready ? generateActivity(sales, ads, investments) : []), [ready, sales, ads, investments]);
@@ -51,11 +73,30 @@ export default function AppLayout() {
             <i className="ti ti-menu-2" />
           </button>
 
+          <div className="topbar-title">
+            <i className="ti ti-layout-dashboard" aria-hidden="true" />
+            <span>{pageTitle}</span>
+          </div>
+
           <div className="topbar-actions" ref={panelRef}>
+            <form className="topbar-search" role="search" onSubmit={submitSearch}>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher une vente…"
+                aria-label="Rechercher une vente par reçu, client ou produit"
+              />
+              <button type="submit" className="topbar-search-btn" aria-label="Lancer la recherche">
+                <i className="ti ti-search" />
+              </button>
+            </form>
+
             <div className="topbar-dropdown-wrap">
               <button
                 className="topbar-icon-btn"
                 title="Activité"
+                aria-label="Activité récente"
                 onClick={() => setPanel(panel === 'messages' ? null : 'messages')}
               >
                 <i className="ti ti-mail" />
@@ -85,6 +126,7 @@ export default function AppLayout() {
               <button
                 className="topbar-icon-btn"
                 title="Notifications"
+                aria-label="Notifications"
                 onClick={() => setPanel(panel === 'notifications' ? null : 'notifications')}
               >
                 <i className="ti ti-bell" />
@@ -115,7 +157,7 @@ export default function AppLayout() {
               </div>
               <div className="topbar-user-info">
                 <span className="topbar-user-name">{ownerName}</span>
-                <span className="topbar-user-email">{ownerEmail}</span>
+                {ownerEmail && <span className="topbar-user-email">{ownerEmail}</span>}
               </div>
             </div>
           </div>

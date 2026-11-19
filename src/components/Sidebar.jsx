@@ -1,9 +1,11 @@
-import { NavLink } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ConfirmDialog from './ConfirmDialog';
 
 const MENU_LINKS = [
   { to: '/app/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
-  { to: '/app/produits', icon: 'ti-package', label: 'Produits', badge: '12+' },
+  { to: '/app/produits', icon: 'ti-package', label: 'Produits' },
   { to: '/app/ventes', icon: 'ti-receipt', label: 'Ventes' },
   { to: '/app/pubs', icon: 'ti-speakerphone', label: 'Pubs' },
   { to: '/app/depenses', icon: 'ti-wallet', label: 'Dépenses' },
@@ -16,14 +18,25 @@ const GENERAL_LINKS = [
 
 export default function Sidebar({ open = false, onClose = () => {} }) {
   const { doLogout } = useAuth();
+  const navigate = useNavigate();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const cancelLogout = useCallback(() => setConfirmLogout(false), []);
+
+  const logout = () => {
+    setConfirmLogout(false);
+    onClose();
+    doLogout();
+    navigate('/connexion', { replace: true });
+  };
 
   return (
     <aside className={`sidebar${open ? ' open' : ''}`}>
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">
-          <i className="ti ti-bolt" />
-        </div>
-        <span>EasySwap</span>
+        <img src="/margee-mark.svg" alt="" width="36" height="36" className="sidebar-logo-mark" />
+        <span className="sidebar-logo-text">
+          <span className="sidebar-logo-name">MARGEE+</span>
+          <span className="sidebar-logo-tag">GÈRE · VENDS · SCALE</span>
+        </span>
         <button className="sidebar-close-btn" onClick={onClose} aria-label="Fermer le menu">
           <i className="ti ti-x" />
         </button>
@@ -64,7 +77,9 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
         ))}
         <button
           className="sidebar-link"
-          onClick={doLogout}
+          type="button"
+          onClick={() => setConfirmLogout(true)}
+          aria-haspopup="dialog"
           style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
         >
           <div className="sidebar-link-content">
@@ -73,6 +88,17 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
           </div>
         </button>
       </nav>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        icon="ti-logout"
+        title="Se déconnecter ?"
+        message="Tu devras saisir ton email et ton mot de passe pour revenir dans ton espace."
+        cancelLabel="Annuler"
+        confirmLabel="Me déconnecter"
+        onCancel={cancelLogout}
+        onConfirm={logout}
+      />
     </aside>
   );
 }

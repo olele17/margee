@@ -48,7 +48,7 @@ export default function SuperAdmin() {
   const activeCount = accounts.filter((a) => a.subscription.status === 'active').length;
   const revenue = accounts.reduce((sum, a) => {
     if (a.subscription.status !== 'active' || !a.subscription.plan) return sum;
-    return sum + { mensuel: 5000, annuel: 50000 }[a.subscription.plan];
+    return sum + (api.PLANS[a.subscription.plan]?.price || 0);
   }, 0);
 
   return (

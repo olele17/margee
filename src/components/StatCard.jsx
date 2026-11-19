@@ -1,4 +1,4 @@
-export default function StatCard({ label, value, sub, trend, positive, highlight, onAction }) {
+export default function StatCard({ label, value, sub, trend, positive, highlight, negative, onAction }) {
   const trendDirClass = trend ? (positive === false ? 'down' : 'up') : '';
   return (
     <div className={`kpi-card${highlight ? ' highlight' : ''}`}>
@@ -9,7 +9,7 @@ export default function StatCard({ label, value, sub, trend, positive, highlight
         </button>
       </div>
 
-      <div className="kpi-value">{value}</div>
+      <div className={`kpi-value${negative ? ' is-negative' : ''}`}>{value}</div>
 
       {(sub || trend) && (
         <div className={`kpi-trend-pill ${trendDirClass}`}>

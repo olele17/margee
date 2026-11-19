@@ -39,7 +39,7 @@ export default function Ads() {
       <div className="stat-row" style={{ marginBottom: 18 }}>
         <div className="card" style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Total dépensé</div>
-          <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 20, fontWeight: 800, marginTop: 6 }}>{fmt(total)}</div>
+          <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontSize: 20, fontWeight: 800, marginTop: 6 }}>{fmt(total)}</div>
         </div>
       </div>
 

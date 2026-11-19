@@ -47,7 +47,7 @@ export default function Products() {
             <div className="field"><label>Prix de vente (Fr) *</label><input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
           </div>
           {form.price && form.costPrice && (
-            <div className="preview-box"><span>Marge :</span><strong>{fmt(margin(form))}</strong></div>
+            <div className="preview-box"><span>Marge :</span><strong className={margin(form) >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(margin(form))}</strong></div>
           )}
           <div className="form-actions">
             <button className="btn btn-dark btn-lg" onClick={submit}>{editing ? 'Enregistrer' : 'Ajouter'}</button>
@@ -70,7 +70,7 @@ export default function Products() {
                   <td>{p.category || '—'}</td>
                   <td>{fmt(p.costPrice)}</td>
                   <td className="bold">{fmt(p.price)}</td>
-                  <td style={{ fontWeight: 700, color: margin(p) >= 0 ? '#A07830' : '#B71C1C' }}>{fmt(margin(p))}</td>
+                  <td className={margin(p) >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(margin(p))}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 5 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => edit(p)}><i className="ti ti-pencil" /></button>

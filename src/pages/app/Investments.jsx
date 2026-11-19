@@ -38,7 +38,7 @@ export default function Investments() {
       <div className="card" style={{ background: 'var(--emerald-dark)', color: '#fff', marginBottom: 18, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
         <div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 1 }}>Retour sur investissement</div>
-          <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 40, fontWeight: 800, color: roiPos ? '#6ee7b7' : '#ff6b6b' }}>
+          <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontSize: 40, fontWeight: 800, color: roiPos ? 'var(--success-on-dark)' : 'var(--danger-on-dark)' }}>
             {roiPos ? '+' : ''}{stats.roi.toFixed(1)}%
           </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>Pour {fmt(stats.totalInvested)} investis</div>
@@ -46,22 +46,22 @@ export default function Investments() {
         <div style={{ display: 'flex', gap: 24 }}>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>Investi</div>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.totalInvested)}</div>
+            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.totalInvested)}</div>
           </div>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>CA généré</div>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.ca)}</div>
+            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.ca)}</div>
           </div>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>Bénéfice net</div>
-            <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.netProfit)}</div>
+            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: stats.netProfit < 0 ? 'var(--danger-on-dark)' : '#fff' }}>{fmt(stats.netProfit)}</div>
           </div>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 18 }}>
-        <div style={{ background: '#E8E8E8', borderRadius: 20, height: 12, overflow: 'hidden' }}>
-          <div style={{ width: barW + '%', height: '100%', borderRadius: 20, background: roiPos ? 'linear-gradient(90deg,var(--emerald-mid),var(--emerald-bright))' : 'linear-gradient(90deg,#B71C1C,#ff6b6b)' }} />
+        <div style={{ background: 'var(--cream-2)', borderRadius: 20, height: 12, overflow: 'hidden' }}>
+          <div style={{ width: barW + '%', height: '100%', borderRadius: 20, background: roiPos ? 'linear-gradient(90deg,var(--gold-light),var(--gold))' : 'linear-gradient(90deg,#B71C1C,#ff6b6b)' }} />
         </div>
       </div>
 
