@@ -395,6 +395,49 @@
 .db-compare-label { color: var(--muted-text); margin-bottom: 4px; }
 .db-compare-value { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
 
+/* ── Challenge en cours ──────────────────────────────────────── */
+.db-challenge {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.db-challenge-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--gold);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.db-challenge-main { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.db-challenge-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.db-challenge-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-dark-aa);
+}
+.db-challenge-days { font-size: 12.5px; font-weight: 600; color: var(--muted-text); }
+.db-challenge-progress { display: flex; align-items: center; gap: 10px; }
+.db-challenge-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--muted-text);
+}
+.db-challenge-meta strong { color: var(--ink); }
+.db-challenge-advice { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-weight: 600; }
+.db-challenge-advice i { color: var(--gold-dark); }
+.db-challenge-btn { flex-shrink: 0; min-height: 44px; }
+.db-challenge--empty .db-card-sub { max-width: 560px; }
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1280px) {
   .db-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -417,6 +460,9 @@
   .db-filter-btn, .db-filter-add { flex: 1 1 auto; justify-content: center; }
   .db-filter-info { width: 100%; }
   .db-search input { width: 120px; }
+  .db-challenge { flex-wrap: wrap; align-items: flex-start; }
+  .db-challenge-main { flex-basis: calc(100% - 70px); }
+  .db-challenge-btn { width: 100%; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

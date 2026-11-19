@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useBusinessData from '../../hooks/useBusinessData';
-import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today } from '../../utils/calc';
+import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, computeChallengeProgress, CHALLENGE_TYPES } from '../../utils/calc';
+import * as api from '../../services/api';
+import { challengeAdvice } from '../../components/ChallengeCard';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import '../../styles/dashboard.css';
+import '../../styles/notes-challenges.css';
 
 /* ── Outils de dates (format AAAA-MM-JJ, heure locale) ──────── */
 const pad = (n) => String(n).padStart(2, '0');
@@ -203,9 +206,63 @@ function ProductDonut({ sales }) {
   );
 }
 
+/* ── Carte « Challenge en cours » ───────────────────────────── */
+// Affiche le challenge actif dont la date de fin est la plus proche.
+function ActiveChallenge({ challenges, sales, ads, products }) {
+  const active = useMemo(() => challenges
+    .map((c) => ({ challenge: c, progress: computeChallengeProgress(c, sales, ads, products) }))
+    .filter((i) => i.progress.status === 'ongoing')
+    .sort((a, b) => a.challenge.endDate.localeCompare(b.challenge.endDate)),
+  [challenges, sales, ads, products]);
+
+  if (active.length === 0) {
+    return (
+      <section className="db-card db-challenge db-challenge--empty" aria-labelledby="db-challenge-title">
+        <span className="db-challenge-icon" aria-hidden="true"><i className="ti ti-target-arrow" /></span>
+        <div className="db-challenge-main">
+          <h2 id="db-challenge-title" className="db-card-title">Fixe-toi un objectif</h2>
+          <p className="db-card-sub">Choisis un chiffre d'affaires, un bénéfice ou un nombre de ventes à atteindre : Margee+ suit ta progression tout seul.</p>
+        </div>
+        <Link to="/app/challenges" className="btn btn-primary db-challenge-btn"><i className="ti ti-plus" aria-hidden="true" /> Créer un challenge</Link>
+      </section>
+    );
+  }
+
+  const { challenge, progress: pr } = active[0];
+  const fmtVal = (n) => (pr.unit === 'money' ? fmt(Math.round(n)) : fmtN(Math.round(n)));
+  const pct = Math.round(pr.percent);
+  return (
+    <section className="db-card db-challenge" aria-labelledby="db-challenge-title">
+      <span className="db-challenge-icon" aria-hidden="true"><i className={`ti ${CHALLENGE_TYPES[challenge.type]?.icon || 'ti-target-arrow'}`} /></span>
+      <div className="db-challenge-main">
+        <div className="db-challenge-head">
+          <span className="db-challenge-label">Challenge en cours{active.length > 1 ? ` · ${active.length} actifs` : ''}</span>
+          <span className="db-challenge-days">{pr.daysLeft} {pr.daysLeft > 1 ? 'jours restants' : 'jour restant'}</span>
+        </div>
+        <h2 id="db-challenge-title" className="db-card-title">{challenge.title}</h2>
+        <div className="db-challenge-progress">
+          <div className="nc-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(pct, 100)} aria-label={pr.isBudget ? 'Part du budget pub dépensée' : "Progression vers l'objectif"}>
+            <div className="nc-bar-fill" style={{ width: `${Math.min(pr.percent, 100)}%` }} />
+          </div>
+          <span className="nc-bar-pct">{pct}%</span>
+        </div>
+        <div className="db-challenge-meta">
+          <span>{pr.isBudget ? 'Dépensé' : 'Réalisé'} : <strong>{fmtVal(pr.realized)}</strong> / {fmtVal(pr.target)}</span>
+          <span className="db-challenge-advice"><i className="ti ti-bolt" aria-hidden="true" />{challengeAdvice(challenge, pr)}</span>
+        </div>
+      </div>
+      <Link to="/app/challenges" className="btn btn-outline db-challenge-btn">Voir mes challenges <i className="ti ti-arrow-right" aria-hidden="true" /></Link>
+    </section>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { account, sales, ads, investments, ready } = useBusinessData();
+  const { account, sales, ads, investments, products, ready } = useBusinessData();
+  const [challenges, setChallenges] = useState([]);
+  useEffect(() => {
+    if (account) api.listChallenges(account.id).then(setChallenges);
+  }, [account]);
 
   // Filtre de dates : brouillon (champs) puis appliqué (bouton Filtrer)
   const [fromDraft, setFromDraft] = useState(firstOfMonth());
@@ -336,6 +393,9 @@ export default function Dashboard() {
           negative={stats.roi < 0}
         />
       </div>
+
+      {/* ── Challenge en cours ──────────────────────────────── */}
+      <ActiveChallenge challenges={challenges} sales={sales} ads={ads} products={products} />
 
       {/* ── Graphique + donut ───────────────────────────────── */}
       <div className="db-row db-row--charts">
