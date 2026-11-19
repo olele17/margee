@@ -9,3 +9,9 @@ dist/
 # Config locale des outils (contient des jetons d acces)
 .mcp.json
 mcp_config.json
+.env.*
+!.env.example
+
+# Fichiers temporaires du CLI Supabase
+supabase/.temp/
+supabase/.branches/
