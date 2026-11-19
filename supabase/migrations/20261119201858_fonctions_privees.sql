@@ -30,8 +30,11 @@ comment on schema private is 'Fonctions internes (non exposées par l''API Supab
 -- Paramètres publics : les visiteurs non connectés n'exécutent plus
 -- is_admin(). Une règle pour eux (clés publiques seulement), une pour
 -- les comptes connectés (clés publiques, ou tout pour un admin).
-drop policy platform_settings_select_public on public.platform_settings;
+-- (modification de la règle existante, sans suppression)
+alter policy platform_settings_select_public on public.platform_settings
+  to authenticated
+  using (is_public or (select private.is_admin()));
+alter policy platform_settings_select_public on public.platform_settings
+  rename to platform_settings_select_auth;
 create policy platform_settings_select_anon on public.platform_settings for select to anon
   using (is_public);
-create policy platform_settings_select_auth on public.platform_settings for select to authenticated
-  using (is_public or (select private.is_admin()));
