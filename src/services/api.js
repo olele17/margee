@@ -2,10 +2,10 @@
  * ══════════════════════════════════════════════════════════════════
  * COUCHE DE DONNÉES
  * ══════════════════════════════════════════════════════════════════
- * Comptes, sessions, profil et abonnement : Supabase (Auth + Postgres,
- * protégés par la RLS). Les données métier (produits, ventes, pubs…)
- * passent à Supabase à l'étape 5 ; d'ici là elles restent dans le
- * localStorage, rangées par identifiant de compte Supabase.
+ * Tout passe par Supabase (Auth + Postgres), protégé par la RLS :
+ * comptes, profil, abonnement, produits, ventes, pubs, dépenses,
+ * investissements, notes, challenges et administration.
+ * Conversion snake_case (base) ↔ camelCase (app) uniquement ici.
  * Les pages React n'appellent que ces fonctions : mêmes noms, mêmes
  * paramètres et même forme de données qu'avant.
  * ══════════════════════════════════════════════════════════════════
@@ -13,22 +13,6 @@
 
 import { supabase } from '../lib/supabase';
 import { CHALLENGE_TYPES } from '../utils/calc';
-
-const DB_KEY = 'easyswap_db_v1';
-
-// ── STORE BRUT (localStorage) ───────────────────────────────────
-function loadDB() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) { console.error('DB read error', e); }
-  return { accounts: [], products: {}, sales: {}, ads: {}, investments: {}, expenses: {}, receiptSeq: {} };
-}
-function saveDB(db) {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-}
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-const delay = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 
 // ── ERREURS : messages clairs en français ───────────────────────
 function isNetworkError(error) {
@@ -323,127 +307,219 @@ export function isSubscriptionActive(account) {
   return false;
 }
 
-// ── PRODUITS ─────────────────────────────────────────────────────
-export async function listProducts(accountId) {
-  await delay();
-  return loadDB().products[accountId] || [];
-}
-export async function saveProduct(accountId, product) {
-  await delay();
-  const db = loadDB();
-  const list = db.products[accountId] || [];
-  if (product.id) {
-    db.products[accountId] = list.map((p) => (p.id === product.id ? product : p));
-  } else {
-    db.products[accountId] = [...list, { ...product, id: uid() }];
+// ══════════════════════════════════════════════════════════════════
+// DONNÉES MÉTIER (Supabase, protégées par la RLS)
+// Chaque table filtre déjà par compte côté base (account_id = auth.uid()).
+// Le filtre .eq('account_id', …) ci-dessous est une défense en plus.
+// ══════════════════════════════════════════════════════════════════
+
+// Messages des erreurs de données (RLS, contraintes, fonctions SQL)
+function toDataError(error, fallback = 'Enregistrement impossible. Réessaie.') {
+  if (!error) return new Error(fallback);
+  if (isNetworkError(error)) return new Error('Connexion impossible, réessaie.');
+  const msg = String(error.message || '');
+  // Erreurs levées en français par nos fonctions SQL (record_sale…)
+  if (['P0001', 'P0002', '22023'].includes(error.code) && msg) return new Error(msg);
+  if (error.code === '42501') {
+    if (/row-level security|permission denied/i.test(msg)) {
+      return new Error("Action impossible : ton abonnement n'est pas actif ou ces données ne t'appartiennent pas.");
+    }
+    return new Error(msg || fallback);
   }
-  saveDB(db);
-  return db.products[accountId];
+  if (error.code === '23514') return new Error('Valeur invalide : vérifie les montants et les champs du formulaire.');
+  if (error.code === '23503') return new Error('Élément lié introuvable ou encore utilisé ailleurs.');
+  return new Error(fallback);
 }
+
+// Supabase renvoie au plus 1 000 lignes par requête : on charge par pages
+// pour ne jamais tronquer silencieusement (ventes, pubs…).
+const PAGE_SIZE = 1000;
+async function fetchAll(buildQuery) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw toDataError(error, 'Impossible de charger tes données. Réessaie.');
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) return rows;
+  }
+}
+
+// Dates : l'app manipule des jours "AAAA-MM-JJ", la base des timestamptz.
+// Africa/Dakar = UTC+0 toute l'année (pas d'heure d'été) : un jour J est
+// stocké à J 12:00 heure de Dakar, et relu dans ce même fuseau.
+const toDay = (ts) => (ts ? new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Africa/Dakar' }) : null);
+const fromDay = (day) => (day ? new Date(`${day}T12:00:00Z`).toISOString() : new Date().toISOString());
+const toAmount = (v) => Math.round(Number(v) || 0);
+
+// ── PRODUITS ─────────────────────────────────────────────────────
+// Remplacé par : table products (les produits archivés ne sont plus listés)
+const mapProduct = (r) => ({
+  id: r.id,
+  name: r.name,
+  category: r.category || '',
+  costPrice: Number(r.cost_price),
+  price: Number(r.price),
+});
+
+export async function listProducts(accountId) {
+  const rows = await fetchAll(() => requireSupabase().from('products').select('*')
+    .eq('account_id', accountId).eq('is_archived', false).order('created_at').order('id'));
+  return rows.map(mapProduct);
+}
+
+export async function saveProduct(accountId, product) {
+  const row = {
+    name: String(product.name || '').trim(),
+    category: String(product.category || '').trim() || null,
+    cost_price: toAmount(product.costPrice),
+    price: toAmount(product.price),
+  };
+  const sb = requireSupabase();
+  const { error } = product.id
+    ? await sb.from('products').update(row).eq('id', product.id).eq('account_id', accountId)
+    : await sb.from('products').insert(row);
+  if (error) throw toDataError(error, "Impossible d'enregistrer le produit. Réessaie.");
+  return listProducts(accountId);
+}
+
+// Un produit déjà vendu (ou suivi par un challenge) n'est pas supprimé :
+// il est archivé, pour garder l'historique des ventes intact.
 export async function deleteProduct(accountId, productId) {
-  await delay();
-  const db = loadDB();
-  db.products[accountId] = (db.products[accountId] || []).filter((p) => p.id !== productId);
-  saveDB(db);
-  return db.products[accountId];
+  const sb = requireSupabase();
+  const { error } = await sb.from('products').delete().eq('id', productId).eq('account_id', accountId);
+  if (error) {
+    if (error.code !== '23503') throw toDataError(error, 'Impossible de supprimer le produit. Réessaie.');
+    const { error: e2 } = await sb.from('products').update({ is_archived: true }).eq('id', productId).eq('account_id', accountId);
+    if (e2) throw toDataError(e2, 'Impossible de supprimer le produit. Réessaie.');
+  }
+  return listProducts(accountId);
 }
 
 // ── VENTES + REÇUS ────────────────────────────────────────────────
+const mapSale = (r) => ({
+  id: r.id,
+  date: toDay(r.sold_at),
+  productId: r.product_id,
+  productName: r.product_name,
+  qty: Number(r.qty),
+  costPrice: Number(r.unit_cost),
+  price: Number(r.unit_price),
+  clientName: r.client_name || '',
+  clientPhone: r.client_phone || '',
+  clientAddress: r.client_address || '',
+  deliveryCost: Number(r.delivery_cost || 0),
+  deliveryPaidByClient: !!r.delivery_paid_by_client,
+  receiptNumber: r.receipt_number,
+  createdAt: r.created_at,
+});
+
 export async function listSales(accountId) {
-  await delay();
-  return loadDB().sales[accountId] || [];
+  const rows = await fetchAll(() => requireSupabase().from('sales').select('*')
+    .eq('account_id', accountId).order('sold_at').order('created_at'));
+  return rows.map(mapSale);
 }
+
+// Remplacé par : fonction SQL record_sale (prix et coût copiés côté base,
+// numéro de reçu sans doublon, quota du plan). Le prix envoyé par le
+// navigateur n'est jamais utilisé.
 export async function recordSale(accountId, sale) {
-  await delay();
-  const db = loadDB();
-  db.receiptSeq[accountId] = (db.receiptSeq[accountId] || 0) + 1;
-  const receiptNumber = `ES-${new Date().getFullYear()}-${String(db.receiptSeq[accountId]).padStart(4, '0')}`;
-  const record = {
-    ...sale,
-    id: uid(),
-    receiptNumber,
-    createdAt: new Date().toISOString(),
-  };
-  db.sales[accountId] = [...(db.sales[accountId] || []), record];
-  saveDB(db);
-  return record;
+  const { data, error } = await requireSupabase().rpc('record_sale', {
+    p_product_id: sale.productId,
+    p_qty: Number(sale.qty),
+    p_client_name: sale.clientName || null,
+    p_client_phone: sale.clientPhone || null,
+    p_client_address: sale.clientAddress || null,
+    p_delivery_cost: toAmount(sale.deliveryCost),
+    p_delivery_paid_by_client: !!sale.deliveryPaidByClient,
+    p_sold_on: sale.date || null,
+  });
+  if (error) throw toDataError(error, "Impossible d'enregistrer la vente. Réessaie.");
+  return mapSale(data);
 }
+
 export async function deleteSale(accountId, saleId) {
-  await delay();
-  const db = loadDB();
-  db.sales[accountId] = (db.sales[accountId] || []).filter((s) => s.id !== saleId);
-  saveDB(db);
-  return db.sales[accountId];
+  const { error } = await requireSupabase().from('sales').delete().eq('id', saleId).eq('account_id', accountId);
+  if (error) throw toDataError(error, 'Impossible de supprimer la vente. Réessaie.');
+  return listSales(accountId);
 }
 
 // ── PUBS DÉPENSÉES ───────────────────────────────────────────────
+const mapAd = (r) => ({ id: r.id, date: toDay(r.spent_at), platform: r.platform, amount: Number(r.amount), note: r.note || '' });
+
 export async function listAds(accountId) {
-  await delay();
-  return loadDB().ads[accountId] || [];
+  const rows = await fetchAll(() => requireSupabase().from('ads').select('*')
+    .eq('account_id', accountId).order('spent_at').order('created_at'));
+  return rows.map(mapAd);
 }
 export async function saveAdSpend(accountId, ad) {
-  await delay();
-  const db = loadDB();
-  const list = db.ads[accountId] || [];
-  db.ads[accountId] = ad.id ? list.map((a) => (a.id === ad.id ? ad : a)) : [...list, { ...ad, id: uid() }];
-  saveDB(db);
-  return db.ads[accountId];
+  const row = { spent_at: fromDay(ad.date), platform: ad.platform || 'Autre', amount: toAmount(ad.amount), note: String(ad.note || '').trim() || null };
+  const sb = requireSupabase();
+  const { error } = ad.id
+    ? await sb.from('ads').update(row).eq('id', ad.id).eq('account_id', accountId)
+    : await sb.from('ads').insert(row);
+  if (error) throw toDataError(error, "Impossible d'enregistrer la dépense pub. Réessaie.");
+  return listAds(accountId);
 }
 export async function deleteAdSpend(accountId, adId) {
-  await delay();
-  const db = loadDB();
-  db.ads[accountId] = (db.ads[accountId] || []).filter((a) => a.id !== adId);
-  saveDB(db);
-  return db.ads[accountId];
+  const { error } = await requireSupabase().from('ads').delete().eq('id', adId).eq('account_id', accountId);
+  if (error) throw toDataError(error, 'Impossible de supprimer la dépense pub. Réessaie.');
+  return listAds(accountId);
 }
 
 // ── INVESTISSEMENTS ──────────────────────────────────────────────
+const mapInvestment = (r) => ({ id: r.id, date: toDay(r.invested_at), description: r.description, amount: Number(r.amount) });
+
 export async function listInvestments(accountId) {
-  await delay();
-  return loadDB().investments[accountId] || [];
+  const rows = await fetchAll(() => requireSupabase().from('investments').select('*')
+    .eq('account_id', accountId).order('invested_at').order('created_at'));
+  return rows.map(mapInvestment);
 }
 export async function saveInvestment(accountId, inv) {
-  await delay();
-  const db = loadDB();
-  const list = db.investments[accountId] || [];
-  db.investments[accountId] = inv.id ? list.map((i) => (i.id === inv.id ? inv : i)) : [...list, { ...inv, id: uid() }];
-  saveDB(db);
-  return db.investments[accountId];
+  const row = { invested_at: fromDay(inv.date), description: String(inv.description || '').trim(), amount: toAmount(inv.amount) };
+  const sb = requireSupabase();
+  const { error } = inv.id
+    ? await sb.from('investments').update(row).eq('id', inv.id).eq('account_id', accountId)
+    : await sb.from('investments').insert(row);
+  if (error) throw toDataError(error, "Impossible d'enregistrer l'investissement. Réessaie.");
+  return listInvestments(accountId);
 }
 export async function deleteInvestment(accountId, invId) {
-  await delay();
-  const db = loadDB();
-  db.investments[accountId] = (db.investments[accountId] || []).filter((i) => i.id !== invId);
-  saveDB(db);
-  return db.investments[accountId];
+  const { error } = await requireSupabase().from('investments').delete().eq('id', invId).eq('account_id', accountId);
+  if (error) throw toDataError(error, "Impossible de supprimer l'investissement. Réessaie.");
+  return listInvestments(accountId);
 }
 
 // ── DÉPENSES (actif / passif) ────────────────────────────────────
+const mapExpense = (r) => ({ id: r.id, date: toDay(r.spent_at), description: r.description, amount: Number(r.amount), type: r.type });
+
 export async function listExpenses(accountId) {
-  await delay();
-  return loadDB().expenses?.[accountId] || [];
+  const rows = await fetchAll(() => requireSupabase().from('expenses').select('*')
+    .eq('account_id', accountId).order('spent_at').order('created_at'));
+  return rows.map(mapExpense);
 }
 export async function saveExpense(accountId, expense) {
-  await delay();
-  const db = loadDB();
-  db.expenses = db.expenses || {};
-  const list = db.expenses[accountId] || [];
-  db.expenses[accountId] = expense.id ? list.map((e) => (e.id === expense.id ? expense : e)) : [...list, { ...expense, id: uid() }];
-  saveDB(db);
-  return db.expenses[accountId];
+  const row = {
+    spent_at: fromDay(expense.date),
+    description: String(expense.description || '').trim(),
+    amount: toAmount(expense.amount),
+    type: expense.type === 'actif' ? 'actif' : 'passif',
+  };
+  const sb = requireSupabase();
+  const { error } = expense.id
+    ? await sb.from('expenses').update(row).eq('id', expense.id).eq('account_id', accountId)
+    : await sb.from('expenses').insert(row);
+  if (error) throw toDataError(error, "Impossible d'enregistrer la dépense. Réessaie.");
+  return listExpenses(accountId);
 }
 export async function deleteExpense(accountId, expenseId) {
-  await delay();
-  const db = loadDB();
-  db.expenses = db.expenses || {};
-  db.expenses[accountId] = (db.expenses[accountId] || []).filter((e) => e.id !== expenseId);
-  saveDB(db);
-  return db.expenses[accountId];
+  const { error } = await requireSupabase().from('expenses').delete().eq('id', expenseId).eq('account_id', accountId);
+  if (error) throw toDataError(error, 'Impossible de supprimer la dépense. Réessaie.');
+  return listExpenses(accountId);
 }
 
 // ── NOTES (carnet privé de l'e-commerçant) ─────────────────────
-// Rangées par compte dans db.notes[accountId] : un compte ne voit que
-// ses notes. Aucune fonction super-admin n'y accède (confidentialité).
+// Table notes : un compte ne voit que ses notes ; aucune règle d'accès
+// admin (confidentialité, même pour le super admin).
 export const NOTE_CATEGORIES = {
   idee: { label: 'Idée', icon: 'ti-bulb' },
   fournisseur: { label: 'Fournisseur', icon: 'ti-truck' },
@@ -454,76 +530,88 @@ export const NOTE_CATEGORIES = {
 const NOTE_TITLE_MAX = 120;
 const NOTE_CONTENT_MAX = 5000;
 
-// Remplacé par : GET /api/notes
+const mapNote = (r) => ({
+  id: r.id,
+  accountId: r.account_id,
+  title: r.title,
+  content: r.content || '',
+  category: r.category,
+  productId: r.product_id,
+  pinned: !!r.pinned,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
 export async function listNotes(accountId) {
-  await delay();
-  return loadDB().notes?.[accountId] || [];
+  const rows = await fetchAll(() => requireSupabase().from('notes').select('*')
+    .eq('account_id', accountId).order('created_at').order('id'));
+  return rows.map(mapNote);
 }
 
-// Remplacé par : POST /api/notes (création) et PUT /api/notes/:id (modification)
 export async function saveNote(accountId, note) {
-  await delay();
   const title = String(note.title || '').trim();
   const content = String(note.content || '').trim();
   if (!title) throw new Error('Le titre de la note est obligatoire.');
   if (title.length > NOTE_TITLE_MAX) throw new Error(`Le titre ne doit pas dépasser ${NOTE_TITLE_MAX} caractères.`);
   if (content.length > NOTE_CONTENT_MAX) throw new Error(`Le contenu ne doit pas dépasser ${NOTE_CONTENT_MAX} caractères.`);
   const category = NOTE_CATEGORIES[note.category] ? note.category : 'autre';
-
-  const db = loadDB();
-  db.notes = db.notes || {};
-  const list = db.notes[accountId] || [];
   // Le produit lié doit appartenir au compte, sinon on l'ignore
-  const productId = note.productId && (db.products[accountId] || []).some((p) => p.id === note.productId) ? note.productId : null;
-  const now = new Date().toISOString();
-
-  if (note.id) {
-    const existing = list.find((n) => n.id === note.id);
-    if (!existing) throw new Error('Note introuvable.');
-    db.notes[accountId] = list.map((n) => (n.id === note.id ? { ...n, title, content, category, productId, updatedAt: now } : n));
-  } else {
-    db.notes[accountId] = [...list, { id: uid(), accountId, title, content, category, productId, pinned: !!note.pinned, createdAt: now, updatedAt: now }];
+  let productId = null;
+  if (note.productId) {
+    const products = await listProducts(accountId);
+    productId = products.some((p) => p.id === note.productId) ? note.productId : null;
   }
-  saveDB(db);
-  return db.notes[accountId];
+  const row = { title, content, category, product_id: productId };
+  const sb = requireSupabase();
+  const { error } = note.id
+    ? await sb.from('notes').update(row).eq('id', note.id).eq('account_id', accountId)
+    : await sb.from('notes').insert({ ...row, pinned: !!note.pinned });
+  if (error) throw toDataError(error, "Impossible d'enregistrer la note. Réessaie.");
+  return listNotes(accountId);
 }
 
-// Remplacé par : DELETE /api/notes/:id
 export async function deleteNote(accountId, noteId) {
-  await delay();
-  const db = loadDB();
-  db.notes = db.notes || {};
-  db.notes[accountId] = (db.notes[accountId] || []).filter((n) => n.id !== noteId);
-  saveDB(db);
-  return db.notes[accountId];
+  const { error } = await requireSupabase().from('notes').delete().eq('id', noteId).eq('account_id', accountId);
+  if (error) throw toDataError(error, 'Impossible de supprimer la note. Réessaie.');
+  return listNotes(accountId);
 }
 
-// Remplacé par : PATCH /api/notes/:id/pin
-// N'actualise pas updatedAt : épingler ne modifie pas le contenu.
+// Épingler ne modifie pas la date « Modifiée le » (trigger côté base).
 export async function togglePinNote(accountId, noteId) {
-  await delay();
-  const db = loadDB();
-  db.notes = db.notes || {};
-  db.notes[accountId] = (db.notes[accountId] || []).map((n) => (n.id === noteId ? { ...n, pinned: !n.pinned } : n));
-  saveDB(db);
-  return db.notes[accountId];
+  const sb = requireSupabase();
+  const { data, error } = await sb.from('notes').select('pinned').eq('id', noteId).eq('account_id', accountId).maybeSingle();
+  if (error) throw toDataError(error);
+  if (!data) throw new Error('Note introuvable.');
+  const { error: e2 } = await sb.from('notes').update({ pinned: !data.pinned }).eq('id', noteId).eq('account_id', accountId);
+  if (e2) throw toDataError(e2, "Impossible d'épingler la note. Réessaie.");
+  return listNotes(accountId);
 }
 
 // ── CHALLENGES (objectifs) ───────────────────────────────────
-// Rangés par compte dans db.challenges[accountId]. Seule la définition
-// est stockée : la progression et le statut sont recalculés à chaque
-// affichage (computeChallengeProgress dans utils/calc.js).
+// Seule la définition est stockée : progression et statut sont
+// recalculés à chaque affichage (computeChallengeProgress dans calc.js).
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Remplacé par : GET /api/challenges
+const mapChallenge = (r) => ({
+  id: r.id,
+  accountId: r.account_id,
+  title: r.title,
+  type: r.type,
+  target: Number(r.target),
+  productId: r.product_id,
+  startDate: r.start_date,
+  endDate: r.end_date,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
 export async function listChallenges(accountId) {
-  await delay();
-  return loadDB().challenges?.[accountId] || [];
+  const rows = await fetchAll(() => requireSupabase().from('challenges').select('*')
+    .eq('account_id', accountId).order('created_at').order('id'));
+  return rows.map(mapChallenge);
 }
 
-// Remplacé par : POST /api/challenges (création) et PUT /api/challenges/:id (modification)
 export async function saveChallenge(accountId, challenge) {
-  await delay();
   const type = challenge.type;
   if (!CHALLENGE_TYPES[type]) throw new Error("Choisis un type d'objectif.");
   const target = Number(challenge.target);
@@ -532,58 +620,93 @@ export async function saveChallenge(accountId, challenge) {
   const { startDate, endDate } = challenge;
   if (!ISO_DATE.test(startDate || '') || !ISO_DATE.test(endDate || '')) throw new Error('Choisis une date de début et une date de fin.');
   if (endDate <= startDate) throw new Error('La date de fin doit être après la date de début.');
-
-  const db = loadDB();
-  db.challenges = db.challenges || {};
-  const list = db.challenges[accountId] || [];
   let productId = null;
   if (type === 'product_units') {
     if (!challenge.productId) throw new Error('Choisis le produit concerné.');
-    if (!(db.products[accountId] || []).some((pr) => pr.id === challenge.productId)) throw new Error('Produit introuvable.');
+    const products = await listProducts(accountId);
+    if (!products.some((pr) => pr.id === challenge.productId)) throw new Error('Produit introuvable.');
     productId = challenge.productId;
   }
   const title = String(challenge.title || '').trim().slice(0, 120);
   if (!title) throw new Error('Donne un titre à ton challenge.');
-  const now = new Date().toISOString();
-  const data = { title, type, target, productId, startDate, endDate };
 
-  if (challenge.id) {
-    if (!list.some((c) => c.id === challenge.id)) throw new Error('Challenge introuvable.');
-    db.challenges[accountId] = list.map((c) => (c.id === challenge.id ? { ...c, ...data, updatedAt: now } : c));
-  } else {
-    db.challenges[accountId] = [...list, { id: uid(), accountId, ...data, createdAt: now, updatedAt: now }];
-  }
-  saveDB(db);
-  return db.challenges[accountId];
+  const row = { title, type, target: Math.round(target), product_id: productId, start_date: startDate, end_date: endDate };
+  const sb = requireSupabase();
+  const { error } = challenge.id
+    ? await sb.from('challenges').update(row).eq('id', challenge.id).eq('account_id', accountId)
+    : await sb.from('challenges').insert(row);
+  if (error) throw toDataError(error, "Impossible d'enregistrer le challenge. Réessaie.");
+  return listChallenges(accountId);
 }
 
-// Remplacé par : DELETE /api/challenges/:id
 export async function deleteChallenge(accountId, challengeId) {
-  await delay();
-  const db = loadDB();
-  db.challenges = db.challenges || {};
-  db.challenges[accountId] = (db.challenges[accountId] || []).filter((c) => c.id !== challengeId);
-  saveDB(db);
-  return db.challenges[accountId];
+  const { error } = await requireSupabase().from('challenges').delete().eq('id', challengeId).eq('account_id', accountId);
+  if (error) throw toDataError(error, 'Impossible de supprimer le challenge. Réessaie.');
+  return listChallenges(accountId);
 }
 
-function sanitize(account) {
-  const { password, ...rest } = account;
-  return rest;
+// ══════════════════════════════════════════════════════════════════
+// SUPER-ADMIN (réservé aux comptes présents dans la table admins)
+// Les règles RLS et les fonctions SQL vérifient le rôle côté base :
+// un e-commerçant qui appellerait ces fonctions ne verrait rien.
+// ══════════════════════════════════════════════════════════════════
+
+// Le compte connecté est-il administrateur ?
+export async function isCurrentUserAdmin() {
+  if (!supabase) return false;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return false;
+  const { data, error } = await supabase.from('admins').select('role').eq('user_id', session.user.id).maybeSingle();
+  if (error) return false;
+  return !!data;
 }
 
-// ── SUPER-ADMIN (toi) ────────────────────────────────────────────
+// Liste des comptes (profil + abonnement). Jamais les notes ni l'épargne.
 export async function listAllAccounts() {
-  await delay();
-  return loadDB().accounts.map(sanitize);
+  const rows = await fetchAll(() => requireSupabase().from('profiles')
+    .select('id, business_name, owner_name, phone, email, created_at, last_login_at, subscriptions(*)')
+    .order('created_at', { ascending: false }));
+  return rows.map((p) => {
+    const sub = Array.isArray(p.subscriptions) ? p.subscriptions[0] : p.subscriptions;
+    const a = mapAccount(p, sub);
+    delete a.receiptSettings; // inutile côté admin
+    return a;
+  });
 }
+
+// Statut d'abonnement modifié par un admin (RLS : admins uniquement).
+// Réactiver : plan conservé (Free si aucun), et prolongation si la
+// période est échue.
 export async function setSubscriptionStatus(accountId, status) {
-  await delay();
-  const db = loadDB();
-  const account = db.accounts.find((a) => a.id === accountId);
-  if (account) {
-    account.subscription.status = status;
-    saveDB(db);
+  const sb = requireSupabase();
+  const { data: sub, error: e1 } = await sb.from('subscriptions').select('*').eq('account_id', accountId).maybeSingle();
+  if (e1) throw toDataError(e1);
+  if (!sub) throw new Error('Abonnement introuvable.');
+  const row = { status };
+  if (status === 'active') {
+    row.plan_id = sub.plan_id || 'free';
+    const plan = PLANS[row.plan_id];
+    if (plan?.days && (!sub.expires_at || new Date(sub.expires_at) <= new Date())) {
+      row.expires_at = new Date(Date.now() + plan.days * 86400000).toISOString();
+    }
+    if (!plan?.days) row.expires_at = null;
   }
-  return sanitize(account);
+  const { data, error } = await sb.from('subscriptions').update(row).eq('account_id', accountId).select().maybeSingle();
+  if (error) throw toDataError(error, "Impossible de modifier l'abonnement. Réessaie.");
+  if (!data) throw new Error('Action réservée aux administrateurs.');
+  return data;
+}
+
+// Statistiques de la plateforme (fonction SQL admin_dashboard_stats)
+export async function getAdminStats() {
+  const { data, error } = await requireSupabase().rpc('admin_dashboard_stats');
+  if (error) throw toDataError(error, 'Impossible de charger les statistiques.');
+  return data;
+}
+
+// Totaux d'un e-commerçant (fonction SQL admin_merchant_overview)
+export async function getMerchantOverview(accountId) {
+  const { data, error } = await requireSupabase().rpc('admin_merchant_overview', { p_account_id: accountId });
+  if (error) throw toDataError(error, "Impossible de charger le résumé de l'e-commerçant.");
+  return data;
 }

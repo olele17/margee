@@ -28,6 +28,22 @@ export default function AppLayout() {
   const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | 'messages' | 'notifications'
+
+  // Erreur non affichée par une page (enregistrement refusé, réseau…) :
+  // on la montre dans un bandeau plutôt que de la laisser passer en silence.
+  const [toast, setToast] = useState(null);
+  useEffect(() => {
+    let timer;
+    const onRejection = (e) => {
+      const message = e.reason?.message;
+      if (!message) return;
+      setToast(message);
+      clearTimeout(timer);
+      timer = setTimeout(() => setToast(null), 7000);
+    };
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => { window.removeEventListener('unhandledrejection', onRejection); clearTimeout(timer); };
+  }, []);
   const panelRef = useRef(null);
 
   const ownerName = account?.ownerName || account?.businessName || 'Mon compte';
@@ -168,6 +184,16 @@ export default function AppLayout() {
         <main>
           <Outlet />
         </main>
+
+        {toast && (
+          <div className="app-toast" role="alert">
+            <i className="ti ti-alert-circle" aria-hidden="true" />
+            <span>{toast}</span>
+            <button type="button" onClick={() => setToast(null)} aria-label="Fermer le message">
+              <i className="ti ti-x" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
