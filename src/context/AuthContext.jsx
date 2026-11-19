@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import * as api from '../services/api';
+import { supabase } from '../services/supabaseClient';
 
 const AuthContext = createContext(null);
 
@@ -8,10 +9,21 @@ export function AuthProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    api.getCurrentAccount().then((a) => {
-      setAccount(a);
-      setReady(true);
+    // onAuthStateChange émet immédiatement l'état courant (session existante ou non)
+    // à l'abonnement, puis à chaque connexion/déconnexion/rafraîchissement de session —
+    // pas besoin d'un appel getSession() séparé au montage.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setAccount(null);
+        setReady(true);
+      } else {
+        api.getCurrentAccount().then((a) => {
+          setAccount(a);
+          setReady(true);
+        });
+      }
     });
+    return () => subscription.unsubscribe();
   }, []);
 
   const refresh = useCallback(async () => {
@@ -28,7 +40,7 @@ export function AuthProvider({ children }) {
 
   const doSignup = useCallback(async (data) => {
     const a = await api.signup(data);
-    // signup doesn't create a session by itself — go straight to login flow
+    // signup ne crée pas de session automatiquement — go straight to login flow
     return a;
   }, []);
 
