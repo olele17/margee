@@ -16,6 +16,8 @@ import Ads from './pages/app/Ads';
 import Expenses from './pages/app/Expenses';
 import Investments from './pages/app/Investments';
 import Settings from './pages/app/Settings';
+import Notes from './pages/app/Notes';
+import Challenges from './pages/app/Challenges';
 
 export default function App() {
   return (
@@ -52,6 +54,8 @@ export default function App() {
             <Route path="pubs" element={<Ads />} />
             <Route path="depenses" element={<Expenses />} />
             <Route path="investissements" element={<Investments />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="challenges" element={<Challenges />} />
             <Route path="parametres" element={<Settings />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>

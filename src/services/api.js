@@ -21,6 +21,7 @@
  */
 
 import { buildDemoData, DEMO_EMAIL, DEMO_PASSWORD } from './demoData';
+import { CHALLENGE_TYPES } from '../utils/calc';
 
 const DB_KEY = 'easyswap_db_v1';
 const SESSION_KEY = 'easyswap_session';
@@ -97,6 +98,10 @@ export async function resetDemoAccount() {
   db.expenses = db.expenses || {};
   db.expenses[id] = demo.expenses;
   db.receiptSeq[id] = demo.receiptSeq;
+  db.notes = db.notes || {};
+  db.notes[id] = demo.notes || [];
+  db.challenges = db.challenges || {};
+  db.challenges[id] = demo.challenges || [];
   saveDB(db);
   return { email: DEMO_EMAIL, password: DEMO_PASSWORD };
 }
@@ -345,6 +350,132 @@ export async function deleteExpense(accountId, expenseId) {
   db.expenses[accountId] = (db.expenses[accountId] || []).filter((e) => e.id !== expenseId);
   saveDB(db);
   return db.expenses[accountId];
+}
+
+// ── NOTES (carnet privé de l'e-commerçant) ─────────────────────
+// Rangées par compte dans db.notes[accountId] : un compte ne voit que
+// ses notes. Aucune fonction super-admin n'y accède (confidentialité).
+export const NOTE_CATEGORIES = {
+  idee: { label: 'Idée', icon: 'ti-bulb' },
+  fournisseur: { label: 'Fournisseur', icon: 'ti-truck' },
+  client: { label: 'Client', icon: 'ti-user' },
+  afaire: { label: 'À faire', icon: 'ti-checkbox' },
+  autre: { label: 'Autre', icon: 'ti-note' },
+};
+const NOTE_TITLE_MAX = 120;
+const NOTE_CONTENT_MAX = 5000;
+
+// Remplacé par : GET /api/notes
+export async function listNotes(accountId) {
+  await delay();
+  return loadDB().notes?.[accountId] || [];
+}
+
+// Remplacé par : POST /api/notes (création) et PUT /api/notes/:id (modification)
+export async function saveNote(accountId, note) {
+  await delay();
+  const title = String(note.title || '').trim();
+  const content = String(note.content || '').trim();
+  if (!title) throw new Error('Le titre de la note est obligatoire.');
+  if (title.length > NOTE_TITLE_MAX) throw new Error(`Le titre ne doit pas dépasser ${NOTE_TITLE_MAX} caractères.`);
+  if (content.length > NOTE_CONTENT_MAX) throw new Error(`Le contenu ne doit pas dépasser ${NOTE_CONTENT_MAX} caractères.`);
+  const category = NOTE_CATEGORIES[note.category] ? note.category : 'autre';
+
+  const db = loadDB();
+  db.notes = db.notes || {};
+  const list = db.notes[accountId] || [];
+  // Le produit lié doit appartenir au compte, sinon on l'ignore
+  const productId = note.productId && (db.products[accountId] || []).some((p) => p.id === note.productId) ? note.productId : null;
+  const now = new Date().toISOString();
+
+  if (note.id) {
+    const existing = list.find((n) => n.id === note.id);
+    if (!existing) throw new Error('Note introuvable.');
+    db.notes[accountId] = list.map((n) => (n.id === note.id ? { ...n, title, content, category, productId, updatedAt: now } : n));
+  } else {
+    db.notes[accountId] = [...list, { id: uid(), accountId, title, content, category, productId, pinned: !!note.pinned, createdAt: now, updatedAt: now }];
+  }
+  saveDB(db);
+  return db.notes[accountId];
+}
+
+// Remplacé par : DELETE /api/notes/:id
+export async function deleteNote(accountId, noteId) {
+  await delay();
+  const db = loadDB();
+  db.notes = db.notes || {};
+  db.notes[accountId] = (db.notes[accountId] || []).filter((n) => n.id !== noteId);
+  saveDB(db);
+  return db.notes[accountId];
+}
+
+// Remplacé par : PATCH /api/notes/:id/pin
+// N'actualise pas updatedAt : épingler ne modifie pas le contenu.
+export async function togglePinNote(accountId, noteId) {
+  await delay();
+  const db = loadDB();
+  db.notes = db.notes || {};
+  db.notes[accountId] = (db.notes[accountId] || []).map((n) => (n.id === noteId ? { ...n, pinned: !n.pinned } : n));
+  saveDB(db);
+  return db.notes[accountId];
+}
+
+// ── CHALLENGES (objectifs) ───────────────────────────────────
+// Rangés par compte dans db.challenges[accountId]. Seule la définition
+// est stockée : la progression et le statut sont recalculés à chaque
+// affichage (computeChallengeProgress dans utils/calc.js).
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Remplacé par : GET /api/challenges
+export async function listChallenges(accountId) {
+  await delay();
+  return loadDB().challenges?.[accountId] || [];
+}
+
+// Remplacé par : POST /api/challenges (création) et PUT /api/challenges/:id (modification)
+export async function saveChallenge(accountId, challenge) {
+  await delay();
+  const type = challenge.type;
+  if (!CHALLENGE_TYPES[type]) throw new Error("Choisis un type d'objectif.");
+  const target = Number(challenge.target);
+  if (!Number.isFinite(target) || target <= 0) throw new Error("L'objectif doit être supérieur à 0.");
+  if (CHALLENGE_TYPES[type].unit === 'count' && !Number.isInteger(target)) throw new Error("L'objectif doit être un nombre entier.");
+  const { startDate, endDate } = challenge;
+  if (!ISO_DATE.test(startDate || '') || !ISO_DATE.test(endDate || '')) throw new Error('Choisis une date de début et une date de fin.');
+  if (endDate <= startDate) throw new Error('La date de fin doit être après la date de début.');
+
+  const db = loadDB();
+  db.challenges = db.challenges || {};
+  const list = db.challenges[accountId] || [];
+  let productId = null;
+  if (type === 'product_units') {
+    if (!challenge.productId) throw new Error('Choisis le produit concerné.');
+    if (!(db.products[accountId] || []).some((pr) => pr.id === challenge.productId)) throw new Error('Produit introuvable.');
+    productId = challenge.productId;
+  }
+  const title = String(challenge.title || '').trim().slice(0, 120);
+  if (!title) throw new Error('Donne un titre à ton challenge.');
+  const now = new Date().toISOString();
+  const data = { title, type, target, productId, startDate, endDate };
+
+  if (challenge.id) {
+    if (!list.some((c) => c.id === challenge.id)) throw new Error('Challenge introuvable.');
+    db.challenges[accountId] = list.map((c) => (c.id === challenge.id ? { ...c, ...data, updatedAt: now } : c));
+  } else {
+    db.challenges[accountId] = [...list, { id: uid(), accountId, ...data, createdAt: now, updatedAt: now }];
+  }
+  saveDB(db);
+  return db.challenges[accountId];
+}
+
+// Remplacé par : DELETE /api/challenges/:id
+export async function deleteChallenge(accountId, challengeId) {
+  await delay();
+  const db = loadDB();
+  db.challenges = db.challenges || {};
+  db.challenges[accountId] = (db.challenges[accountId] || []).filter((c) => c.id !== challengeId);
+  saveDB(db);
+  return db.challenges[accountId];
 }
 
 // ── SUPER-ADMIN (toi) ────────────────────────────────────────────

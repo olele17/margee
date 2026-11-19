@@ -83,3 +83,90 @@ export function groupByMonth(sales, ads) {
   });
   return months;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   CHALLENGES : objectifs suivis automatiquement
+   La progression n'est jamais saisie : elle est recalculée à chaque
+   affichage à partir des ventes et des pubs de la période.
+   ══════════════════════════════════════════════════════════════════ */
+
+export const CHALLENGE_TYPES = {
+  ca: { label: "Chiffre d'affaires à atteindre", short: "Chiffre d'affaires", unit: 'money', icon: 'ti-cash-banknote' },
+  profit: { label: 'Bénéfice à atteindre', short: 'Bénéfice', unit: 'money', icon: 'ti-trending-up' },
+  sales_count: { label: 'Nombre de ventes', short: 'Ventes', unit: 'count', icon: 'ti-receipt' },
+  product_units: { label: "Ventes d'un produit précis", short: 'Ventes du produit', unit: 'count', icon: 'ti-package' },
+  ad_budget: { label: 'Budget pub à ne pas dépasser', short: 'Budget pub', unit: 'money', icon: 'ti-speakerphone' },
+};
+
+// Dates au format AAAA-MM-JJ (même référence que les ventes : today())
+const _pad = (n) => String(n).padStart(2, '0');
+const _iso = (d) => `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
+const _parse = (s) => new Date(`${s}T00:00:00`);
+export const daysBetweenIso = (a, b) => Math.round((_parse(b) - _parse(a)) / 86400000);
+
+/** Raccourcis de période : semaine (lundi → dimanche) et mois (1er → dernier jour). */
+export function periodPreset(kind, ref = today()) {
+  const d = _parse(ref);
+  if (kind === 'week') {
+    const offset = (d.getDay() + 6) % 7; // lundi = 0
+    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset);
+    const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+    return { startDate: _iso(monday), endDate: _iso(sunday) };
+  }
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return { startDate: _iso(first), endDate: _iso(last) };
+}
+
+/**
+ * Progression d'un challenge.
+ * - ca            : Σ (prix × quantité) des ventes de la période
+ * - profit        : bénéfice net, même calcul que le tableau de bord
+ *                   (CA − coût de revient − pubs − livraisons à ta charge)
+ * - sales_count   : nombre de ventes (1 vente = 1 reçu)
+ * - product_units : pièces vendues du produit choisi
+ * - ad_budget     : pubs dépensées ; réussir = rester sous la cible
+ * Statut calculé : upcoming | ongoing | success | failed
+ */
+export function computeChallengeProgress(challenge, sales, ads, products = [], now = today()) {
+  const { type, startDate, endDate } = challenge;
+  const target = Number(challenge.target) || 0;
+  const inPeriod = (date) => date >= startDate && date <= endDate;
+  const periodSales = sales.filter((s) => inPeriod(s.date));
+  const periodAds = ads.filter((a) => inPeriod(a.date));
+
+  let realized = 0;
+  let productMissing = false;
+  if (type === 'ca') realized = periodSales.reduce((a, s) => a + s.qty * s.price, 0);
+  else if (type === 'profit') realized = computeStats(periodSales, periodAds, []).netProfit;
+  else if (type === 'sales_count') realized = periodSales.length;
+  else if (type === 'product_units') {
+    productMissing = !products.some((p) => p.id === challenge.productId);
+    realized = periodSales.filter((s) => s.productId === challenge.productId).reduce((a, s) => a + Number(s.qty), 0);
+  } else if (type === 'ad_budget') realized = periodAds.reduce((a, x) => a + Number(x.amount), 0);
+
+  const isBudget = type === 'ad_budget';
+  const started = now >= startDate;
+  const ended = now > endDate;
+  const reached = isBudget ? false : realized >= target;
+  const overBudget = isBudget && realized > target;
+
+  let status;
+  if (!started) status = 'upcoming';
+  else if (isBudget) status = overBudget ? 'failed' : ended ? 'success' : 'ongoing';
+  else status = reached ? 'success' : ended ? 'failed' : 'ongoing';
+
+  const percent = target > 0 ? Math.max(0, (realized / target) * 100) : 0;
+  const remaining = isBudget ? target - realized : Math.max(target - realized, 0);
+  // Jours restants, aujourd'hui compris (0 si la période est finie)
+  const daysLeft = ended ? 0 : started ? daysBetweenIso(now, endDate) + 1 : daysBetweenIso(startDate, endDate) + 1;
+  const daysUntilStart = started ? 0 : daysBetweenIso(now, startDate);
+  const totalDays = daysBetweenIso(startDate, endDate) + 1;
+  // Rythme nécessaire par jour pour réussir (ou dépense max par jour pour le budget)
+  const perDay = daysLeft > 0 ? Math.max(remaining, 0) / daysLeft : 0;
+
+  return {
+    realized, target, percent, remaining, daysLeft, daysUntilStart, totalDays, perDay,
+    status, isBudget, productMissing, unit: CHALLENGE_TYPES[type]?.unit || 'money',
+  };
+}

@@ -12,6 +12,8 @@ const PAGE_TITLES = {
   '/app/pubs': 'Pubs',
   '/app/depenses': 'Dépenses',
   '/app/investissements': 'Investissements',
+  '/app/notes': 'Notes',
+  '/app/challenges': 'Challenges',
   '/app/parametres': 'Paramètres',
 };
 

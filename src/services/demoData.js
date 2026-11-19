@@ -144,8 +144,52 @@ export function buildDemoData(accountId) {
     },
   };
 
+  const daysAgo = (n) => new Date(now.getTime() - n * 86400000).toISOString();
+  const notes = [
+    {
+      id: 'n1', accountId, category: 'fournisseur', pinned: true, productId: 'p1',
+      title: 'Fournisseur sacs en cuir — Médina',
+      content: "Moussa, atelier rue 22 Médina. WhatsApp 77 555 21 08.\nPrix de gros : 9 000 F à partir de 10 sacs, 9 500 F à l'unité.\nDélai : 5 jours. Paiement Wave à la commande.",
+      createdAt: daysAgo(40), updatedAt: daysAgo(6),
+    },
+    {
+      id: 'n2', accountId, category: 'idee', pinned: false, productId: null,
+      title: "Pack fêtes de fin d'année",
+      content: 'Proposer un pack montre + parfum à 26 000 F (au lieu de 28 000 F). Faire une vidéo TikTok de présentation la semaine prochaine.',
+      createdAt: daysAgo(4), updatedAt: daysAgo(2),
+    },
+    {
+      id: 'n3', accountId, category: 'afaire', pinned: false, productId: null,
+      title: 'Relancer les clients sans avis',
+      content: 'Envoyer un message à Awa Diop et Cheikh Sow pour leur demander une photo avec le produit.',
+      createdAt: daysAgo(1), updatedAt: daysAgo(1),
+    },
+  ];
+
+  // Challenges d'exemple : le statut et la progression sont calculés à
+  // l'affichage à partir des ventes et pubs ci-dessus (rien n'est stocké).
+  const p2 = (n) => String(n).padStart(2, '0');
+  const ymd = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  const monthRange = (offset) => ({
+    startDate: ymd(new Date(now.getFullYear(), now.getMonth() + offset, 1)),
+    endDate: ymd(new Date(now.getFullYear(), now.getMonth() + offset + 1, 0)),
+  });
+  const cur = monthRange(0);
+  const prev = monthRange(-1);
+  const next = monthRange(1);
+  const challenges = [
+    { id: 'c1', accountId, title: "700 000 F de chiffre d'affaires ce mois", type: 'ca', target: 700000, productId: null, ...cur },
+    { id: 'c2', accountId, title: '15 sacs en cuir vendus ce mois', type: 'product_units', target: 15, productId: 'p1', ...cur },
+    { id: 'c3', accountId, title: 'Pubs : pas plus de 60 000 F ce mois', type: 'ad_budget', target: 60000, productId: null, ...cur },
+    { id: 'c4', accountId, title: '180 000 F de bénéfice le mois dernier', type: 'profit', target: 180000, productId: null, ...prev },
+    { id: 'c5', accountId, title: '40 ventes le mois dernier', type: 'sales_count', target: 40, productId: null, ...prev },
+    { id: 'c6', accountId, title: "800 000 F de chiffre d'affaires le mois prochain", type: 'ca', target: 800000, productId: null, ...next },
+  ].map((c) => ({ ...c, createdAt: daysAgo(30), updatedAt: daysAgo(30) }));
+
   return {
     account,
+    notes,
+    challenges,
     products: PRODUCTS,
     sales: finalSales,
     ads,

@@ -10,6 +10,8 @@ const MENU_LINKS = [
   { to: '/app/pubs', icon: 'ti-speakerphone', label: 'Pubs' },
   { to: '/app/depenses', icon: 'ti-wallet', label: 'Dépenses' },
   { to: '/app/investissements', icon: 'ti-chart-pie', label: 'Investissements' },
+  { to: '/app/notes', icon: 'ti-notebook', label: 'Notes' },
+  { to: '/app/challenges', icon: 'ti-target-arrow', label: 'Challenges' },
 ];
 
 const GENERAL_LINKS = [
