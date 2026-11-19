@@ -1,133 +1,109 @@
 /**
  * ══════════════════════════════════════════════════════════════════
- * COUCHE DE DONNÉES — SUPABASE (auth + Postgres + RLS)
+ * COUCHE DE DONNÉES — SIMULATION LOCALE (à remplacer par le backend)
  * ══════════════════════════════════════════════════════════════════
- * Chaque fonction garde le même nom, la même signature (accountId en
- * premier paramètre) et la même forme de retour que l'ancienne version
- * localStorage — aucun composant React n'a besoin de changer.
+ * Toutes les fonctions ici sont déjà `async` et retournent des Promises,
+ * exactement comme le fera un vrai appel `fetch()` vers l'API backend.
+ * Pour brancher le vrai backend plus tard (Node/Express + DB + Bictorys),
+ * il suffit de remplacer le CORPS de chaque fonction par un fetch() —
+ * aucun composant React n'a besoin de changer.
  *
- * L'isolation des données entre comptes est appliquée par la base
- * (Row Level Security, voir supabase/schema.sql), pas seulement par le
- * filtre `.eq('account_id', accountId)` ci-dessous — celui-ci reste une
- * défense en profondeur, pas la seule protection.
+ * Exemple de migration :
+ *   export async function login(email, password) {
+ *     const res = await fetch(`${API_URL}/auth/login`, {
+ *       method: 'POST', headers: {'Content-Type':'application/json'},
+ *       body: JSON.stringify({ email, password })
+ *     });
+ *     if (!res.ok) throw new Error((await res.json()).message);
+ *     return res.json(); // { account, token }
+ *   }
  * ══════════════════════════════════════════════════════════════════
  */
 
-import { supabase } from './supabaseClient';
+const DB_KEY = 'easyswap_db_v1';
+const SESSION_KEY = 'easyswap_session';
 
-// ── MAPPING DB (snake_case) → APP (camelCase) ────────────────────
-function mapProfile(row) {
-  return {
-    id: row.id,
-    ownerName: row.owner_name,
-    businessName: row.business_name,
-    phone: row.phone,
-    email: row.email,
-    role: 'owner',
-    createdAt: row.created_at,
-    subscription: {
-      status: row.subscription_status,
-      plan: row.subscription_plan,
-      expiresAt: row.subscription_expires_at,
-    },
-    receiptSettings: {
-      logo: row.receipt_logo,
-      address: row.receipt_address,
-      city: row.receipt_city,
-      note: row.receipt_note,
-      signatureType: row.receipt_signature_type,
-      signatureImage: row.receipt_signature_image,
-    },
-  };
+// ── STORE BRUT (localStorage) ───────────────────────────────────
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { console.error('DB read error', e); }
+  return { accounts: [], products: {}, sales: {}, ads: {}, investments: {}, expenses: {}, receiptSeq: {} };
 }
-function mapProduct(row) {
-  return { id: row.id, name: row.name, category: row.category, costPrice: Number(row.cost_price), price: Number(row.price) };
+function saveDB(db) {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
 }
-function mapSale(row) {
-  return {
-    id: row.id,
-    date: row.date,
-    productId: row.product_id,
-    productName: row.product_name,
-    qty: Number(row.qty),
-    costPrice: Number(row.cost_price),
-    price: Number(row.price),
-    clientName: row.client_name,
-    clientPhone: row.client_phone,
-    clientAddress: row.client_address,
-    deliveryCost: Number(row.delivery_cost || 0),
-    deliveryPaidByClient: row.delivery_paid_by_client,
-    receiptNumber: row.receipt_number,
-    createdAt: row.created_at,
-  };
-}
-function mapAd(row) {
-  return { id: row.id, date: row.date, platform: row.platform, amount: Number(row.amount), note: row.note };
-}
-function mapInvestment(row) {
-  return { id: row.id, date: row.date, description: row.description, amount: Number(row.amount) };
-}
-function mapExpense(row) {
-  return { id: row.id, date: row.date, description: row.description, amount: Number(row.amount), type: row.type };
-}
-
-function fail(error) {
-  if (error) throw new Error(error.message);
-}
-
-async function fetchProfile(userId) {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  fail(error);
-  return mapProfile(data);
-}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const delay = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 
 // ── AUTH / COMPTES ───────────────────────────────────────────────
 export async function signup({ ownerName, businessName, phone, email, password }) {
-  const { data, error } = await supabase.auth.signUp({
+  await delay();
+  const db = loadDB();
+  if (db.accounts.some((a) => a.email === email)) {
+    throw new Error('Un compte existe déjà avec cet email.');
+  }
+  const account = {
+    id: uid(),
+    ownerName,
+    businessName,
+    phone,
     email,
-    password,
-    options: { data: { owner_name: ownerName, business_name: businessName, phone } },
-  });
-  fail(error);
-  // Le trigger SQL (on_auth_user_created) crée la ligne `profiles` côté serveur.
-  // Comme avant, signup() n'ouvre pas de session — c'est doLogin() juste après qui s'en charge.
-  return {
-    id: data.user?.id,
-    ownerName, businessName, phone, email,
+    password, // ⚠️ démo uniquement — le backend doit hasher (bcrypt/argon2)
     role: 'owner',
-    subscription: { status: 'pending', plan: null, expiresAt: null },
+    createdAt: new Date().toISOString(),
+    subscription: { status: 'pending', plan: null, expiresAt: null }, // pending | active | expired
   };
+  db.accounts.push(account);
+  db.products[account.id] = [];
+  db.sales[account.id] = [];
+  db.ads[account.id] = [];
+  db.investments[account.id] = [];
+  db.expenses = db.expenses || {};
+  db.expenses[account.id] = [];
+  db.receiptSeq[account.id] = 0;
+  saveDB(db);
+  return sanitize(account);
 }
 
 export async function login(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  fail(error);
-  return fetchProfile(data.user.id);
+  await delay();
+  const db = loadDB();
+  const account = db.accounts.find((a) => a.email === email && a.password === password);
+  if (!account) throw new Error('Email ou mot de passe incorrect.');
+  const session = { accountId: account.id, token: uid() };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  return sanitize(account);
 }
 
-export async function logout() {
-  await supabase.auth.signOut();
+export function logout() {
+  localStorage.removeItem(SESSION_KEY);
 }
 
 export async function getCurrentAccount() {
-  const { data: { session } } = await supabase.auth.getSession();
+  await delay(50);
+  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
   if (!session) return null;
-  return fetchProfile(session.user.id);
+  const db = loadDB();
+  const account = db.accounts.find((a) => a.id === session.accountId);
+  return account ? sanitize(account) : null;
+}
+
+function sanitize(account) {
+  const { password, ...rest } = account;
+  return rest;
 }
 
 // ── PARAMÈTRES DE FACTURATION (logo, signature, infos reçu) ─────
 export async function updateReceiptSettings(accountId, settings) {
-  const payload = {};
-  if ('logo' in settings) payload.receipt_logo = settings.logo;
-  if ('address' in settings) payload.receipt_address = settings.address;
-  if ('city' in settings) payload.receipt_city = settings.city;
-  if ('note' in settings) payload.receipt_note = settings.note;
-  if ('signatureType' in settings) payload.receipt_signature_type = settings.signatureType;
-  if ('signatureImage' in settings) payload.receipt_signature_image = settings.signatureImage;
-
-  const { data, error } = await supabase.from('profiles').update(payload).eq('id', accountId).select().single();
-  fail(error);
-  return mapProfile(data);
+  await delay();
+  const db = loadDB();
+  const account = db.accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error('Compte introuvable.');
+  account.receiptSettings = { ...(account.receiptSettings || {}), ...settings };
+  saveDB(db);
+  return sanitize(account);
 }
 
 // ── ABONNEMENT / PAIEMENT (Bictorys — à brancher côté backend) ──
@@ -142,24 +118,22 @@ export const PLANS = {
  * créer une session de paiement (checkout hébergé) et renvoie l'URL
  * de redirection. La clé secrète Bictorys ne doit JAMAIS être ici.
  * Une fois le paiement confirmé via webhook côté backend, le backend
- * met à jour le statut d'abonnement.
+ * met à jour account.subscription = { status:'active', plan, expiresAt }.
  *
  * En attendant le backend, cette version simule une activation
  * immédiate pour pouvoir tester tout le frontend.
  */
 export async function subscribe(accountId, planKey) {
+  await delay(300);
+  const db = loadDB();
+  const account = db.accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error('Compte introuvable.');
   const plan = PLANS[planKey];
   if (!plan) throw new Error('Plan invalide.');
   const expiresAt = new Date(Date.now() + plan.days * 86400000).toISOString();
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({ subscription_status: 'active', subscription_plan: planKey, subscription_expires_at: expiresAt })
-    .eq('id', accountId)
-    .select()
-    .single();
-  fail(error);
-  return mapProfile(data);
+  account.subscription = { status: 'active', plan: planKey, expiresAt };
+  saveDB(db);
+  return sanitize(account);
 }
 
 export function isSubscriptionActive(account) {
@@ -172,151 +146,134 @@ export function isSubscriptionActive(account) {
 
 // ── PRODUITS ─────────────────────────────────────────────────────
 export async function listProducts(accountId) {
-  const { data, error } = await supabase.from('products').select('*').eq('account_id', accountId).order('created_at');
-  fail(error);
-  return data.map(mapProduct);
+  await delay();
+  return loadDB().products[accountId] || [];
 }
 export async function saveProduct(accountId, product) {
-  const row = { name: product.name, category: product.category, cost_price: Number(product.costPrice) || 0, price: Number(product.price) || 0 };
+  await delay();
+  const db = loadDB();
+  const list = db.products[accountId] || [];
   if (product.id) {
-    const { error } = await supabase.from('products').update(row).eq('id', product.id).eq('account_id', accountId);
-    fail(error);
+    db.products[accountId] = list.map((p) => (p.id === product.id ? product : p));
   } else {
-    const { error } = await supabase.from('products').insert({ ...row, account_id: accountId });
-    fail(error);
+    db.products[accountId] = [...list, { ...product, id: uid() }];
   }
-  return listProducts(accountId);
+  saveDB(db);
+  return db.products[accountId];
 }
 export async function deleteProduct(accountId, productId) {
-  const { error } = await supabase.from('products').delete().eq('id', productId).eq('account_id', accountId);
-  fail(error);
-  return listProducts(accountId);
+  await delay();
+  const db = loadDB();
+  db.products[accountId] = (db.products[accountId] || []).filter((p) => p.id !== productId);
+  saveDB(db);
+  return db.products[accountId];
 }
 
 // ── VENTES + REÇUS ────────────────────────────────────────────────
 export async function listSales(accountId) {
-  const { data, error } = await supabase.from('sales').select('*').eq('account_id', accountId).order('created_at');
-  fail(error);
-  return data.map(mapSale);
+  await delay();
+  return loadDB().sales[accountId] || [];
 }
 export async function recordSale(accountId, sale) {
-  const { data: receiptNumber, error: rpcError } = await supabase.rpc('next_receipt_number', { p_account_id: accountId });
-  fail(rpcError);
-
-  const { data, error } = await supabase
-    .from('sales')
-    .insert({
-      account_id: accountId,
-      date: sale.date,
-      product_id: sale.productId,
-      product_name: sale.productName,
-      qty: sale.qty,
-      cost_price: sale.costPrice,
-      price: sale.price,
-      client_name: sale.clientName,
-      client_phone: sale.clientPhone,
-      client_address: sale.clientAddress,
-      delivery_cost: sale.deliveryCost || 0,
-      delivery_paid_by_client: !!sale.deliveryPaidByClient,
-      receipt_number: receiptNumber,
-    })
-    .select()
-    .single();
-  fail(error);
-  return mapSale(data);
+  await delay();
+  const db = loadDB();
+  db.receiptSeq[accountId] = (db.receiptSeq[accountId] || 0) + 1;
+  const receiptNumber = `ES-${new Date().getFullYear()}-${String(db.receiptSeq[accountId]).padStart(4, '0')}`;
+  const record = {
+    ...sale,
+    id: uid(),
+    receiptNumber,
+    createdAt: new Date().toISOString(),
+  };
+  db.sales[accountId] = [...(db.sales[accountId] || []), record];
+  saveDB(db);
+  return record;
 }
 export async function deleteSale(accountId, saleId) {
-  const { error } = await supabase.from('sales').delete().eq('id', saleId).eq('account_id', accountId);
-  fail(error);
-  return listSales(accountId);
+  await delay();
+  const db = loadDB();
+  db.sales[accountId] = (db.sales[accountId] || []).filter((s) => s.id !== saleId);
+  saveDB(db);
+  return db.sales[accountId];
 }
 
 // ── PUBS DÉPENSÉES ───────────────────────────────────────────────
 export async function listAds(accountId) {
-  const { data, error } = await supabase.from('ads').select('*').eq('account_id', accountId).order('created_at');
-  fail(error);
-  return data.map(mapAd);
+  await delay();
+  return loadDB().ads[accountId] || [];
 }
 export async function saveAdSpend(accountId, ad) {
-  const row = { date: ad.date, platform: ad.platform, amount: Number(ad.amount) || 0, note: ad.note };
-  if (ad.id) {
-    const { error } = await supabase.from('ads').update(row).eq('id', ad.id).eq('account_id', accountId);
-    fail(error);
-  } else {
-    const { error } = await supabase.from('ads').insert({ ...row, account_id: accountId });
-    fail(error);
-  }
-  return listAds(accountId);
+  await delay();
+  const db = loadDB();
+  const list = db.ads[accountId] || [];
+  db.ads[accountId] = ad.id ? list.map((a) => (a.id === ad.id ? ad : a)) : [...list, { ...ad, id: uid() }];
+  saveDB(db);
+  return db.ads[accountId];
 }
 export async function deleteAdSpend(accountId, adId) {
-  const { error } = await supabase.from('ads').delete().eq('id', adId).eq('account_id', accountId);
-  fail(error);
-  return listAds(accountId);
+  await delay();
+  const db = loadDB();
+  db.ads[accountId] = (db.ads[accountId] || []).filter((a) => a.id !== adId);
+  saveDB(db);
+  return db.ads[accountId];
 }
 
 // ── INVESTISSEMENTS ──────────────────────────────────────────────
 export async function listInvestments(accountId) {
-  const { data, error } = await supabase.from('investments').select('*').eq('account_id', accountId).order('created_at');
-  fail(error);
-  return data.map(mapInvestment);
+  await delay();
+  return loadDB().investments[accountId] || [];
 }
 export async function saveInvestment(accountId, inv) {
-  const row = { date: inv.date, description: inv.description, amount: Number(inv.amount) || 0 };
-  if (inv.id) {
-    const { error } = await supabase.from('investments').update(row).eq('id', inv.id).eq('account_id', accountId);
-    fail(error);
-  } else {
-    const { error } = await supabase.from('investments').insert({ ...row, account_id: accountId });
-    fail(error);
-  }
-  return listInvestments(accountId);
+  await delay();
+  const db = loadDB();
+  const list = db.investments[accountId] || [];
+  db.investments[accountId] = inv.id ? list.map((i) => (i.id === inv.id ? inv : i)) : [...list, { ...inv, id: uid() }];
+  saveDB(db);
+  return db.investments[accountId];
 }
 export async function deleteInvestment(accountId, invId) {
-  const { error } = await supabase.from('investments').delete().eq('id', invId).eq('account_id', accountId);
-  fail(error);
-  return listInvestments(accountId);
+  await delay();
+  const db = loadDB();
+  db.investments[accountId] = (db.investments[accountId] || []).filter((i) => i.id !== invId);
+  saveDB(db);
+  return db.investments[accountId];
 }
 
 // ── DÉPENSES (actif / passif) ────────────────────────────────────
 export async function listExpenses(accountId) {
-  const { data, error } = await supabase.from('expenses').select('*').eq('account_id', accountId).order('created_at');
-  fail(error);
-  return data.map(mapExpense);
+  await delay();
+  return loadDB().expenses?.[accountId] || [];
 }
 export async function saveExpense(accountId, expense) {
-  const row = { date: expense.date, description: expense.description, amount: Number(expense.amount) || 0, type: expense.type || 'passif' };
-  if (expense.id) {
-    const { error } = await supabase.from('expenses').update(row).eq('id', expense.id).eq('account_id', accountId);
-    fail(error);
-  } else {
-    const { error } = await supabase.from('expenses').insert({ ...row, account_id: accountId });
-    fail(error);
-  }
-  return listExpenses(accountId);
+  await delay();
+  const db = loadDB();
+  db.expenses = db.expenses || {};
+  const list = db.expenses[accountId] || [];
+  db.expenses[accountId] = expense.id ? list.map((e) => (e.id === expense.id ? expense : e)) : [...list, { ...expense, id: uid() }];
+  saveDB(db);
+  return db.expenses[accountId];
 }
 export async function deleteExpense(accountId, expenseId) {
-  const { error } = await supabase.from('expenses').delete().eq('id', expenseId).eq('account_id', accountId);
-  fail(error);
-  return listExpenses(accountId);
+  await delay();
+  const db = loadDB();
+  db.expenses = db.expenses || {};
+  db.expenses[accountId] = (db.expenses[accountId] || []).filter((e) => e.id !== expenseId);
+  saveDB(db);
+  return db.expenses[accountId];
 }
 
-// ── SUPER-ADMIN ──────────────────────────────────────────────────
-// ⚠️ Non fonctionnel avec la RLS actuelle : un utilisateur normal ne peut
-// lire/modifier que sa propre ligne `profiles`. À revoir avec un vrai rôle
-// admin (colonne + policy dédiée) avant de remettre cette page en service.
+// ── SUPER-ADMIN (toi) ────────────────────────────────────────────
 export async function listAllAccounts() {
-  const { data, error } = await supabase.from('profiles').select('*');
-  fail(error);
-  return data.map(mapProfile);
+  await delay();
+  return loadDB().accounts.map(sanitize);
 }
 export async function setSubscriptionStatus(accountId, status) {
-  const payload = { subscription_status: status };
-  if (status === 'active') {
-    // Réactiver prolonge aussi l'expiration — sinon un compte déjà expiré
-    // resterait bloqué malgré la réactivation (expiresAt resterait dans le passé).
-    payload.subscription_expires_at = new Date(Date.now() + PLANS.mensuel.days * 86400000).toISOString();
+  await delay();
+  const db = loadDB();
+  const account = db.accounts.find((a) => a.id === accountId);
+  if (account) {
+    account.subscription.status = status;
+    saveDB(db);
   }
-  const { data, error } = await supabase.from('profiles').update(payload).eq('id', accountId).select().single();
-  fail(error);
-  return mapProfile(data);
+  return sanitize(account);
 }

@@ -3,46 +3,41 @@
 SaaS multi-tenant de gestion e-commerce. Chaque e-commerçant qui s'inscrit
 obtient son propre espace privé pour gérer :
 
-- **Produits** (prix d'achat / de vente, stock)
+- **Produits** (coût de revient, prix de vente, catégorie)
 - **Ventes** avec **reçu PDF automatique** numéroté (logo, adresse et signature personnalisables)
 - **Pubs** dépensées, **dépenses** générales, **investissements** & ROI
 - **Dashboard** avec CA, bénéfice et comparaison mensuelle
-- **Abonnement** payant (Bictorys — à brancher)
+- **Abonnement** (paiement simulé en démo)
 - **Super-admin** opérateur sur `/admin`
 
-Stack : React 18 · Vite 5 · React Router 6 · Supabase (Auth + Postgres) · jsPDF.
+Stack : React 18 · Vite 5 · React Router 6 · jsPDF. **Aucun backend, aucune
+base de données** : c'est une démo 100 % navigateur.
+
+## Mode démo (localStorage)
+
+Toutes les données (comptes, produits, ventes, pubs…) sont stockées dans le
+`localStorage` du navigateur. Conséquences :
+
+- les données restent sur l'appareil et le navigateur utilisés ;
+- vider les données du site efface tout ;
+- les mots de passe sont stockés en clair et le paiement est simulé
+  (activation immédiate) — **ne pas utiliser avec de vrais clients**.
 
 ## Démarrer en local
 
-1. Installer les dépendances :
-   ```bash
-   npm install
-   ```
-2. Créer un projet sur [supabase.com](https://supabase.com), puis dans
-   **SQL Editor → New query**, coller et exécuter `supabase/schema.sql`.
-3. Remplir `.env.local` à la racine (Dashboard Supabase → Project Settings → API) :
-   ```env
-   VITE_SUPABASE_URL=https://xxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJ...
-   ```
-   Ce fichier est ignoré par git — ne jamais y mettre de clé secrète
-   (`service_role`, Bictorys…) : tout ce qui commence par `VITE_` est visible
-   dans le navigateur.
-4. Lancer :
-   ```bash
-   npm run dev      # http://localhost:5173
-   npm run build    # build de production dans dist/
-   npm run preview  # tester le build
-   ```
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run preview  # tester un build
+```
 
 ## Structure du projet
 
 ```
 src/
   services/
-    supabaseClient.js   ← client Supabase (lit .env.local)
-    api.js              ← COUCHE DE DONNÉES — toutes les lectures/écritures passent ici
-  context/AuthContext.jsx  ← session utilisateur (Supabase Auth)
+    api.js              ← COUCHE DE DONNÉES (localStorage) — toutes les lectures/écritures passent ici
+  context/AuthContext.jsx  ← session utilisateur
   hooks/useBusinessData.js
   utils/
     calc.js             ← calculs CA / bénéfice / ROI
@@ -53,12 +48,10 @@ src/
   pages/                ← Landing, Signup, Login, Subscribe, SuperAdmin
   pages/app/            ← Dashboard, Products, Sales, Ads, Expenses, Investments, Settings
   styles/global.css
-supabase/schema.sql     ← tables, sécurité (RLS), triggers
 ```
 
-Les composants React n'appellent jamais Supabase directement : ils passent
-par les fonctions `async` de `api.js`. Changer de backend = réécrire `api.js`
-uniquement.
+Les composants React ne lisent jamais le `localStorage` directement : ils
+passent par les fonctions `async` de `api.js`.
 
 ### Routes
 
@@ -70,35 +63,14 @@ uniquement.
 | `/app/dashboard`, `/app/produits`, `/app/ventes`, `/app/pubs`, `/app/depenses`, `/app/investissements`, `/app/parametres` | Espace commerçant (protégé) |
 | `/admin` | Super-admin opérateur |
 
-## Base de données (Supabase)
+## Données de démo
 
-`supabase/schema.sql` crée :
-
-- `profiles` — 1 ligne par compte (lié à `auth.users`), infos boutique,
-  abonnement (`subscription_status` : `pending` | `active` | `expired`) et
-  réglages des reçus. Créée automatiquement à l'inscription (trigger
-  `on_auth_user_created`).
-- `products`, `sales`, `ads`, `investments`, `expenses` — chaque ligne est
-  rattachée à un `account_id`.
-- `receipt_counters` + fonction `next_receipt_number()` — numérotation des
-  reçus par compte et par année.
-
-**Isolation multi-tenant** : Row Level Security activée sur toutes les tables,
-chaque commerçant ne voit et ne modifie que ses propres lignes.
-
-## Reste à faire
-
-1. **Paiement Bictorys** (`subscribe()` dans `api.js`, page `Subscribe.jsx`) :
-   - Edge Function Supabase (ou endpoint serveur) qui appelle l'API Bictorys
-     avec la clé secrète **côté serveur uniquement** et renvoie l'URL de paiement.
-   - Webhook de confirmation qui passe le profil en `subscription_status = 'active'`
-     avec `subscription_plan` et `subscription_expires_at`.
-   - Doc : https://docs.bictorys.com
-2. **Super-admin** : le mot de passe opérateur est écrit en dur dans
-   `src/pages/SuperAdmin.jsx` — le remplacer par un vrai rôle admin
-   (ex. colonne `is_admin` + politique RLS dédiée).
-3. **Expiration automatique** des abonnements (cron / `pg_cron`) à
-   `subscription_expires_at`.
+- Clé `easyswap_db_v1` : `{ accounts, products, sales, ads, investments, expenses, receiptSeq }`.
+  Chaque liste est rangée par identifiant de compte : un compte ne voit jamais
+  les données d'un autre.
+- Clé `easyswap_session` : le compte connecté.
+- Reçus numérotés automatiquement par compte : `ES-AAAA-NNNN`.
+- Abonnement : le bouton de paiement active le compte immédiatement (simulation).
 
 ## ⚠️ Note sur l'état du dépôt
 
