@@ -11,10 +11,12 @@ export default function Subscribe() {
   const [plan, setPlan] = useState('pro');
   const [billing, setBilling] = useState('monthly'); // monthly | yearly
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
   const selected = PLANS[plan];
   const paid = selected.price > 0;
 
   const pay = async () => {
+    setErr('');
     setLoading(true);
     try {
       // TODO BACKEND : remplacer ce subscribe() par un appel qui crée
@@ -24,6 +26,8 @@ export default function Subscribe() {
       await subscribe(account.id, plan, billing);
       await refresh();
       navigate('/app/dashboard');
+    } catch (e) {
+      setErr(e.message);
     } finally {
       setLoading(false);
     }
@@ -106,6 +110,7 @@ export default function Subscribe() {
             ))}
           </ul>
 
+          {err && <div className="au-err" role="alert" style={{ marginTop: 18 }}>{err}</div>}
           <button className="au-btn au-btn--gold" style={{ marginTop: 22 }} onClick={pay} disabled={loading}>
             {loading
               ? 'Activation…'

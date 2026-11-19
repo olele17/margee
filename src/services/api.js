@@ -1,30 +1,20 @@
 /**
  * ══════════════════════════════════════════════════════════════════
- * COUCHE DE DONNÉES — SIMULATION LOCALE (à remplacer par le backend)
+ * COUCHE DE DONNÉES
  * ══════════════════════════════════════════════════════════════════
- * Toutes les fonctions ici sont déjà `async` et retournent des Promises,
- * exactement comme le fera un vrai appel `fetch()` vers l'API backend.
- * Pour brancher le vrai backend plus tard (Node/Express + DB + Bictorys),
- * il suffit de remplacer le CORPS de chaque fonction par un fetch() —
- * aucun composant React n'a besoin de changer.
- *
- * Exemple de migration :
- *   export async function login(email, password) {
- *     const res = await fetch(`${API_URL}/auth/login`, {
- *       method: 'POST', headers: {'Content-Type':'application/json'},
- *       body: JSON.stringify({ email, password })
- *     });
- *     if (!res.ok) throw new Error((await res.json()).message);
- *     return res.json(); // { account, token }
- *   }
+ * Comptes, sessions, profil et abonnement : Supabase (Auth + Postgres,
+ * protégés par la RLS). Les données métier (produits, ventes, pubs…)
+ * passent à Supabase à l'étape 5 ; d'ici là elles restent dans le
+ * localStorage, rangées par identifiant de compte Supabase.
+ * Les pages React n'appellent que ces fonctions : mêmes noms, mêmes
+ * paramètres et même forme de données qu'avant.
  * ══════════════════════════════════════════════════════════════════
  */
 
-import { buildDemoData, DEMO_EMAIL, DEMO_PASSWORD } from './demoData';
+import { supabase } from '../lib/supabase';
 import { CHALLENGE_TYPES } from '../utils/calc';
 
 const DB_KEY = 'easyswap_db_v1';
-const SESSION_KEY = 'easyswap_session';
 
 // ── STORE BRUT (localStorage) ───────────────────────────────────
 function loadDB() {
@@ -40,117 +30,227 @@ function saveDB(db) {
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const delay = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 
-// ── AUTH / COMPTES ───────────────────────────────────────────────
-export async function signup({ ownerName, businessName, phone, email, password }) {
-  await delay();
-  const db = loadDB();
-  if (db.accounts.some((a) => a.email === email)) {
-    throw new Error('Un compte existe déjà avec cet email.');
-  }
-  const account = {
-    id: uid(),
-    ownerName,
-    businessName,
-    phone,
-    email,
-    password, // ⚠️ démo uniquement — le backend doit hasher (bcrypt/argon2)
-    role: 'owner',
-    createdAt: new Date().toISOString(),
-    subscription: { status: 'pending', plan: null, expiresAt: null }, // pending | active | expired
-  };
-  db.accounts.push(account);
-  db.products[account.id] = [];
-  db.sales[account.id] = [];
-  db.ads[account.id] = [];
-  db.investments[account.id] = [];
-  db.expenses = db.expenses || {};
-  db.expenses[account.id] = [];
-  db.receiptSeq[account.id] = 0;
-  saveDB(db);
-  return sanitize(account);
+// ── ERREURS : messages clairs en français ───────────────────────
+function isNetworkError(error) {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return (
+    error?.name === 'AuthRetryableFetchError' ||
+    error?.status === 0 ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network request failed') ||
+    msg.includes('load failed')
+  );
 }
 
-export async function login(email, password) {
-  await delay();
-  const db = loadDB();
-  const account = db.accounts.find((a) => a.email === email && a.password === password);
-  if (!account) throw new Error('Email ou mot de passe incorrect.');
-  const session = { accountId: account.id, token: uid() };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return sanitize(account);
+const AUTH_ERRORS = {
+  invalid_credentials: 'Email ou mot de passe incorrect.',
+  email_not_confirmed: "Confirme d'abord ton email : clique sur le lien reçu dans ta boîte mail.",
+  user_already_exists: 'Un compte existe déjà avec cet email.',
+  email_exists: 'Un compte existe déjà avec cet email.',
+  weak_password: 'Mot de passe trop faible : 8 caractères minimum.',
+  over_email_send_rate_limit: 'Trop de demandes en peu de temps. Réessaie dans quelques minutes.',
+  over_request_rate_limit: 'Trop de tentatives. Réessaie dans quelques minutes.',
+  email_address_invalid: 'Adresse email invalide.',
+  same_password: "Le nouveau mot de passe doit être différent de l'ancien.",
+  signup_disabled: 'Les inscriptions sont fermées pour le moment.',
+};
+
+// Transforme une erreur Supabase en Error avec un message lisible.
+function toError(error, fallback = 'Une erreur est survenue. Réessaie.') {
+  if (!error) return new Error(fallback);
+  if (isNetworkError(error)) return new Error('Connexion impossible, réessaie.');
+  if (error.code && AUTH_ERRORS[error.code]) return new Error(AUTH_ERRORS[error.code]);
+  const msg = String(error.message || '');
+  if (/invalid login credentials/i.test(msg)) return new Error(AUTH_ERRORS.invalid_credentials);
+  if (/email not confirmed/i.test(msg)) return new Error(AUTH_ERRORS.email_not_confirmed);
+  if (/already registered/i.test(msg)) return new Error(AUTH_ERRORS.user_already_exists);
+  if (/signup_closed|database error saving new user/i.test(msg)) return new Error(AUTH_ERRORS.signup_disabled);
+  // Messages déjà en français levés par nos fonctions SQL
+  if (msg && /[éèàçù]|^(Ton|Connecte|Abonnement|Choisis|Le |La |Les )/.test(msg)) return new Error(msg);
+  return new Error(fallback);
+}
+
+function requireSupabase() {
+  if (!supabase) {
+    throw new Error('Configuration manquante : renseigne VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local.');
+  }
+  return supabase;
+}
+
+// ── COMPTE : base (snake_case) → app (camelCase) ─────────────────
+function mapAccount(profile, sub) {
+  return {
+    id: profile.id,
+    ownerName: profile.owner_name || '',
+    businessName: profile.business_name || '',
+    phone: profile.phone || '',
+    email: profile.email,
+    role: 'owner',
+    createdAt: profile.created_at,
+    lastLoginAt: profile.last_login_at,
+    savingsRulePercent: profile.savings_rule_percent,
+    subscription: {
+      status: sub?.status || 'pending',
+      plan: sub?.plan_id || null,
+      billing: sub?.billing || null,
+      expiresAt: sub?.expires_at || null,
+      trialEndsAt: sub?.trial_ends_at || null,
+    },
+    receiptSettings: {
+      logo: profile.receipt_logo || null,
+      address: profile.receipt_address || '',
+      city: profile.receipt_city || '',
+      note: profile.receipt_note || '',
+      email: profile.receipt_email || '',
+      signatureType: profile.receipt_signature_type || 'draw',
+      signatureImage: profile.receipt_signature || null,
+    },
+  };
+}
+
+async function fetchAccount(userId) {
+  const sb = requireSupabase();
+  const [{ data: profile, error: e1 }, { data: sub, error: e2 }] = await Promise.all([
+    sb.from('profiles').select('*').eq('id', userId).maybeSingle(),
+    sb.from('subscriptions').select('*').eq('account_id', userId).maybeSingle(),
+  ]);
+  if (e1 || e2) throw toError(e1 || e2, 'Impossible de charger ton compte. Réessaie.');
+  if (!profile) throw new Error('Profil introuvable. Contacte le support.');
+  return mapAccount(profile, sub);
+}
+
+// ── AUTH / COMPTES (Supabase Auth) ───────────────────────────────
+// Lecture publique : les inscriptions sont-elles ouvertes ?
+async function isSignupOpen() {
+  const { data, error } = await requireSupabase()
+    .from('platform_settings').select('value').eq('key', 'signup_open').maybeSingle();
+  if (error) throw toError(error);
+  return data ? data.value !== false : true;
 }
 
 /**
- * Compte de démonstration : crée (ou remet à zéro) un compte Elite rempli
- * de données d'exemple, puis renvoie ses identifiants pour se connecter.
+ * Crée le compte. Le profil et l'abonnement « pending » sont créés par
+ * la base (trigger). Si la confirmation d'email est activée dans
+ * Supabase, aucune session n'est ouverte : needsEmailConfirmation = true.
  */
-export async function resetDemoAccount() {
-  await delay();
-  const db = loadDB();
-  const existing = db.accounts.find((a) => a.email === DEMO_EMAIL);
-  const id = existing ? existing.id : uid();
-  const demo = buildDemoData(id);
-  db.accounts = [...db.accounts.filter((a) => a.id !== id), demo.account];
-  db.products[id] = demo.products;
-  db.sales[id] = demo.sales;
-  db.ads[id] = demo.ads;
-  db.investments[id] = demo.investments;
-  db.expenses = db.expenses || {};
-  db.expenses[id] = demo.expenses;
-  db.receiptSeq[id] = demo.receiptSeq;
-  db.notes = db.notes || {};
-  db.notes[id] = demo.notes || [];
-  db.challenges = db.challenges || {};
-  db.challenges[id] = demo.challenges || [];
-  saveDB(db);
-  return { email: DEMO_EMAIL, password: DEMO_PASSWORD };
+export async function signup({ ownerName, businessName, phone, email, password }) {
+  const sb = requireSupabase();
+  if (String(password || '').length < 8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
+  let open;
+  try { open = await isSignupOpen(); } catch (e) { throw e; }
+  if (!open) throw new Error(AUTH_ERRORS.signup_disabled);
+
+  const { data, error } = await sb.auth.signUp({
+    email: String(email).trim(),
+    password,
+    options: {
+      data: { business_name: businessName, owner_name: ownerName, phone },
+      emailRedirectTo: `${window.location.origin}/connexion`,
+    },
+  });
+  if (error) throw toError(error, 'Inscription impossible. Réessaie.');
+  // Email déjà utilisé : Supabase renvoie un utilisateur sans identité
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    throw new Error(AUTH_ERRORS.user_already_exists);
+  }
+  return {
+    id: data.user?.id,
+    ownerName, businessName, phone, email,
+    role: 'owner',
+    subscription: { status: 'pending', plan: null, expiresAt: null },
+    needsEmailConfirmation: !data.session,
+  };
 }
 
-export function logout() {
-  localStorage.removeItem(SESSION_KEY);
+export async function login(email, password) {
+  const sb = requireSupabase();
+  const { data, error } = await sb.auth.signInWithPassword({ email: String(email).trim(), password });
+  if (error) throw toError(error, 'Connexion impossible. Réessaie.');
+  // Date de dernière connexion (sans bloquer la connexion en cas d'échec)
+  sb.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', data.user.id).then(() => {});
+  return fetchAccount(data.user.id);
+}
+
+export async function logout() {
+  if (!supabase) return;
+  await supabase.auth.signOut();
 }
 
 export async function getCurrentAccount() {
-  await delay(50);
-  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
-  const db = loadDB();
-  const account = db.accounts.find((a) => a.id === session.accountId);
-  return account ? sanitize(account) : null;
+  return fetchAccount(session.user.id);
 }
 
-function sanitize(account) {
-  const { password, ...rest } = account;
-  return rest;
+/**
+ * Écoute les changements de session (connexion, déconnexion, autre onglet,
+ * lien de réinitialisation). Renvoie une fonction pour arrêter l'écoute.
+ */
+export function onAuthChange(callback) {
+  if (!supabase) return () => {};
+  const { data } = supabase.auth.onAuthStateChange((event, session) => callback(event, session));
+  return () => data.subscription.unsubscribe();
+}
+
+// ── MOT DE PASSE OUBLIÉ ──────────────────────────────────────────
+// Remplacé par : Supabase Auth (email de réinitialisation)
+export async function requestPasswordReset(email) {
+  const { error } = await requireSupabase().auth.resetPasswordForEmail(String(email).trim(), {
+    redirectTo: `${window.location.origin}/reinitialiser-mot-de-passe`,
+  });
+  if (error) throw toError(error, "Impossible d'envoyer l'email. Réessaie.");
+}
+
+export async function hasSession() {
+  if (!supabase) return false;
+  const { data: { session } } = await supabase.auth.getSession();
+  return !!session;
+}
+
+export async function updatePassword(newPassword) {
+  if (String(newPassword || '').length < 8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
+  const { error } = await requireSupabase().auth.updateUser({ password: newPassword });
+  if (error) throw toError(error, 'Impossible de changer le mot de passe. Réessaie.');
 }
 
 // ── PARAMÈTRES DE FACTURATION (logo, signature, infos reçu) ─────
+const RECEIPT_COLUMNS = {
+  logo: 'receipt_logo',
+  address: 'receipt_address',
+  city: 'receipt_city',
+  note: 'receipt_note',
+  email: 'receipt_email',
+  signatureType: 'receipt_signature_type',
+  signatureImage: 'receipt_signature',
+};
+
 export async function updateReceiptSettings(accountId, settings) {
-  await delay();
-  const db = loadDB();
-  const account = db.accounts.find((a) => a.id === accountId);
-  if (!account) throw new Error('Compte introuvable.');
-  account.receiptSettings = { ...(account.receiptSettings || {}), ...settings };
-  saveDB(db);
-  return sanitize(account);
+  const row = {};
+  Object.entries(RECEIPT_COLUMNS).forEach(([key, col]) => {
+    if (key in settings) row[col] = settings[key] === '' ? null : settings[key];
+  });
+  if (row.receipt_signature_type == null) delete row.receipt_signature_type;
+  const { error } = await requireSupabase().from('profiles').update(row).eq('id', accountId);
+  if (error) throw toError(error, "Impossible d'enregistrer les réglages. Réessaie.");
+  return fetchAccount(accountId);
 }
 
 // ── INFORMATIONS DE L'ENTREPRISE (nom, propriétaire, téléphone) ──
 // L'email de connexion n'est pas modifié ici : l'email affiché sur les
-// reçus est stocké à part dans receiptSettings.email.
+// reçus est stocké à part (receipt_email).
 export async function updateBusinessInfo(accountId, info) {
-  await delay();
-  const db = loadDB();
-  const account = db.accounts.find((a) => a.id === accountId);
-  if (!account) throw new Error('Compte introuvable.');
+  const row = {};
   if ('businessName' in info) {
-    if (!String(info.businessName).trim()) throw new Error('Le nom de l\'entreprise est obligatoire.');
-    account.businessName = String(info.businessName).trim();
+    if (!String(info.businessName).trim()) throw new Error("Le nom de l'entreprise est obligatoire.");
+    row.business_name = String(info.businessName).trim();
   }
-  if ('ownerName' in info) account.ownerName = String(info.ownerName).trim();
-  if ('phone' in info) account.phone = String(info.phone).trim();
-  saveDB(db);
-  return sanitize(account);
+  if ('ownerName' in info) row.owner_name = String(info.ownerName).trim() || null;
+  if ('phone' in info) row.phone = String(info.phone).trim() || null;
+  const { error } = await requireSupabase().from('profiles').update(row).eq('id', accountId);
+  if (error) throw toError(error, "Impossible d'enregistrer les informations. Réessaie.");
+  return fetchAccount(accountId);
 }
 
 // ── ABONNEMENT / PAIEMENT (Bictorys — à brancher côté backend) ──
@@ -195,43 +295,32 @@ export const ANNUAL_DAYS = 365;
 export const annualPrice = (plan) => plan.price * ANNUAL_MONTHS_PAID;
 
 /**
- * TODO BACKEND : cette fonction doit appeler ton endpoint backend
- * (ex: POST /api/subscribe) qui lui-même appelle l'API Bictorys pour
- * créer une session de paiement (checkout hébergé) et renvoie l'URL
- * de redirection. La clé secrète Bictorys ne doit JAMAIS être ici.
- * Une fois le paiement confirmé via webhook côté backend, le backend
- * met à jour account.subscription = { status:'active', plan, expiresAt }.
- *
- * En attendant le backend, cette version simule une activation
- * immédiate pour pouvoir tester tout le frontend.
+ * Choix du plan.
+ * - Free : activé tout de suite par la fonction SQL choose_free_plan()
+ *   (seule écriture d'abonnement permise à l'e-commerçant).
+ * - Pro / Elite : le paiement Bictorys passe par une Edge Function
+ *   (create-checkout) branchée à l'étape 6 ; l'abonnement est activé par
+ *   le webhook côté serveur, jamais depuis le navigateur.
  */
 export async function subscribe(accountId, planKey, billing = 'monthly') {
-  await delay(300);
-  const db = loadDB();
-  const account = db.accounts.find((a) => a.id === accountId);
-  if (!account) throw new Error('Compte introuvable.');
   const plan = PLANS[planKey];
   if (!plan) throw new Error('Plan invalide.');
-  const yearly = billing === 'yearly' && plan.price > 0;
-  const days = yearly ? ANNUAL_DAYS : plan.days;
-  const expiresAt = days ? new Date(Date.now() + days * 86400000).toISOString() : null;
-  account.subscription = {
-    status: 'active',
-    plan: planKey,
-    billing: yearly ? 'yearly' : 'monthly',
-    amountPaid: yearly ? annualPrice(plan) : plan.price,
-    expiresAt,
-  };
-  saveDB(db);
-  return sanitize(account);
+  if (plan.price === 0) {
+    const { error } = await requireSupabase().rpc('choose_free_plan');
+    if (error) throw toError(error, "Impossible d'activer le plan Free. Réessaie.");
+    return fetchAccount(accountId);
+  }
+  // Remplacé à l'étape 6 par : Edge Function create-checkout → redirection Bictorys
+  throw new Error('Le paiement en ligne (Wave, Orange Money, carte) arrive très bientôt. En attendant, choisis le plan Free.');
 }
 
 export function isSubscriptionActive(account) {
   if (!account) return false;
-  const { status, expiresAt } = account.subscription || {};
-  if (status !== 'active') return false;
-  if (expiresAt && new Date(expiresAt) < new Date()) return false;
-  return true;
+  const { status, expiresAt, trialEndsAt } = account.subscription || {};
+  const now = new Date();
+  if (status === 'active') return !expiresAt || new Date(expiresAt) > now;
+  if (status === 'trial') return !!trialEndsAt && new Date(trialEndsAt) > now;
+  return false;
 }
 
 // ── PRODUITS ─────────────────────────────────────────────────────
@@ -476,6 +565,11 @@ export async function deleteChallenge(accountId, challengeId) {
   db.challenges[accountId] = (db.challenges[accountId] || []).filter((c) => c.id !== challengeId);
   saveDB(db);
   return db.challenges[accountId];
+}
+
+function sanitize(account) {
+  const { password, ...rest } = account;
+  return rest;
 }
 
 // ── SUPER-ADMIN (toi) ────────────────────────────────────────────

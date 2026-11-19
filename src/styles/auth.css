@@ -247,3 +247,23 @@
   .au *, .au *::before, .au *::after { transition: none !important; }
   .au-btn:hover:not(:disabled) { transform: none; }
 }
+
+/* Lien « Mot de passe oublié ? » à côté du libellé */
+.au-field-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.au-link-small { font-size: 13px; font-weight: 600; color: var(--au-gold-dark); text-decoration: none; }
+.au-link-small:hover { text-decoration: underline; }
+
+/* Encadré d'information (email envoyé, vérification du lien) */
+.au-info {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--au-cream-2);
+  color: var(--au-ink);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.au-info i { font-size: 24px; color: var(--au-gold-dark); flex-shrink: 0; }

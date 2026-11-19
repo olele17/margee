@@ -4,13 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import AuthShell from '../components/AuthShell';
 
 export default function Signup() {
-  const { doSignup, doLogin } = useAuth();
+  const { doSignup } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     ownerName: '', businessName: '', phone: '', email: '', password: '',
   });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -23,8 +24,12 @@ export default function Signup() {
     }
     setLoading(true);
     try {
-      await doSignup(form);
-      await doLogin(form.email, form.password);
+      const result = await doSignup(form);
+      if (result.needsEmailConfirmation) {
+        // Supabase envoie un email de confirmation : pas de session avant le clic
+        setConfirmEmail(form.email);
+        return;
+      }
       navigate('/abonnement');
     } catch (e2) {
       setErr(e2.message);
@@ -32,6 +37,22 @@ export default function Signup() {
       setLoading(false);
     }
   };
+
+  if (confirmEmail) {
+    return (
+      <AuthShell label="Inscription" title="Vérifie ta boîte mail" subtitle="Ton compte est créé, il ne reste qu'une étape.">
+        <div className="au-info" role="status">
+          <i className="ti ti-mail-check" aria-hidden="true" />
+          <p>
+            Nous avons envoyé un lien de confirmation à <strong>{confirmEmail}</strong>.
+            Clique dessus, puis connecte-toi pour choisir ton plan.
+          </p>
+        </div>
+        <p className="au-demo-note">Pas reçu ? Regarde dans les spams, ou attends une minute avant de réessayer.</p>
+        <Link to="/connexion" className="au-btn au-btn--gold" style={{ marginTop: 18 }}>Aller à la connexion</Link>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell label="Inscription" title="Crée ton espace business" subtitle="Quelques infos et tu enregistres ta première vente.">

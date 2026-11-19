@@ -6,6 +6,8 @@ import AppLayout from './components/AppLayout';
 import Landing from './pages/Landing';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Subscribe from './pages/Subscribe';
 import SuperAdmin from './pages/SuperAdmin';
 
@@ -28,6 +30,8 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/inscription" element={<Signup />} />
           <Route path="/connexion" element={<Login />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+          <Route path="/reinitialiser-mot-de-passe" element={<ResetPassword />} />
 
           {/* Subscription — logged in but not necessarily active yet */}
           <Route
