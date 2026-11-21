@@ -645,6 +645,15 @@ export async function deleteChallenge(accountId, challengeId) {
   return listChallenges(accountId);
 }
 
+// ── QUOTA DE REÇUS ───────────────────────────────────────────────
+// Reçus émis par mois (table receipt_usage, lecture seule pour le
+// compte). Le calcul du quota se fait dans calc.js (computeReceiptQuota).
+export async function getReceiptUsage(accountId) {
+  const rows = await fetchAll(() => requireSupabase().from('receipt_usage').select('period, issued')
+    .eq('account_id', accountId).order('period'));
+  return rows.map((r) => ({ period: r.period, issued: Number(r.issued) }));
+}
+
 // ══════════════════════════════════════════════════════════════════
 // SUPER-ADMIN (réservé aux comptes présents dans la table admins)
 // Les règles RLS et les fonctions SQL vérifient le rôle côté base :

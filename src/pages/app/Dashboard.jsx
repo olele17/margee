@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useBusinessData from '../../hooks/useBusinessData';
-import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, computeChallengeProgress, CHALLENGE_TYPES } from '../../utils/calc';
+import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, computeChallengeProgress, CHALLENGE_TYPES, computeReceiptQuota } from '../../utils/calc';
 import * as api from '../../services/api';
 import { challengeAdvice } from '../../components/ChallengeCard';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
@@ -256,6 +256,56 @@ function ActiveChallenge({ challenges, sales, ads, products }) {
   );
 }
 
+/* ── Carte « plan et reçus » (quota du plan + appel à passer au plan supérieur) ── */
+function QuotaCard({ account, usage }) {
+  const planKey = account?.subscription?.plan;
+  const plan = api.PLANS[planKey];
+  const quota = useMemo(() => computeReceiptQuota(plan, usage), [plan, usage]);
+  if (!plan || !quota.limited) return null;           // Elite : illimité
+  if (planKey !== 'free' && !quota.reached && !quota.nearLimit) return null; // Pro : seulement à l'approche de la limite
+
+  const isFree = planKey === 'free';
+  const nextPlan = isFree ? api.PLANS.pro : api.PLANS.elite;
+  const scopeLabel = quota.scope === 'month' ? 'ce mois-ci' : 'au total';
+
+  let title;
+  let text;
+  if (quota.reached) {
+    title = isFree ? `Tu as utilisé tes ${quota.limit} reçus gratuits` : `Limite de ${quota.limit} reçus atteinte ce mois-ci`;
+    text = isFree
+      ? `Passe à ${nextPlan.label} (${fmt(nextPlan.price)} / mois) pour continuer à enregistrer tes ventes et générer tes reçus.`
+      : `Passe à ${nextPlan.label} pour des reçus illimités, ou attends le 1er du mois prochain.`;
+  } else if (quota.nearLimit) {
+    title = `Plus que ${quota.remaining} reçu${quota.remaining > 1 ? 's' : ''} ${isFree ? 'gratuit' + (quota.remaining > 1 ? 's' : '') : 'ce mois-ci'}`;
+    text = `Anticipe : avec ${nextPlan.label}, ${nextPlan.receiptLimit ? `${nextPlan.receiptLimit} reçus par mois` : 'tes reçus sont illimités'}.`;
+  } else {
+    title = `Plan ${plan.label} : ${quota.used} / ${quota.limit} reçus utilisés ${scopeLabel}`;
+    text = `Passe à ${nextPlan.label} pour ${nextPlan.receiptLimit ? `${nextPlan.receiptLimit} reçus par mois` : 'des reçus illimités'}.`;
+  }
+
+  const tone = quota.reached ? 'reached' : quota.nearLimit ? 'near' : 'info';
+  return (
+    <section className={`db-quota db-quota--${tone}`} aria-labelledby="db-quota-title" role={quota.reached ? 'alert' : undefined}>
+      <span className="db-quota-icon" aria-hidden="true">
+        <i className={`ti ${quota.reached ? 'ti-lock' : 'ti-receipt'}`} />
+      </span>
+      <div className="db-quota-main">
+        <h2 id="db-quota-title" className="db-quota-title">{title}</h2>
+        <p className="db-quota-text">{text}</p>
+        <div className="db-quota-progress">
+          <div className="nc-bar" role="progressbar" aria-valuemin={0} aria-valuemax={quota.limit} aria-valuenow={Math.min(quota.used, quota.limit)} aria-label={`Reçus utilisés ${scopeLabel}`}>
+            <div className={`nc-bar-fill${quota.reached ? ' is-failed' : ''}`} style={{ width: `${quota.percent}%` }} />
+          </div>
+          <span className="db-quota-count">{Math.min(quota.used, quota.limit)} / {quota.limit}</span>
+        </div>
+      </div>
+      <Link to="/abonnement" className={`btn ${quota.reached ? 'btn-primary' : 'btn-outline'} db-quota-btn`}>
+        <i className="ti ti-arrow-up-right" aria-hidden="true" /> {quota.reached ? 'Voir les plans' : `Passer à ${nextPlan.label}`}
+      </Link>
+    </section>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { account, sales, ads, investments, products, ready } = useBusinessData();
@@ -263,6 +313,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (account) api.listChallenges(account.id).then(setChallenges);
   }, [account]);
+
+  // Reçus émis (quota du plan), rechargés quand le nombre de ventes change
+  const [usage, setUsage] = useState([]);
+  useEffect(() => {
+    if (account) api.getReceiptUsage(account.id).then(setUsage).catch(() => setUsage([]));
+  }, [account, sales.length]);
 
   // Filtre de dates : brouillon (champs) puis appliqué (bouton Filtrer)
   const [fromDraft, setFromDraft] = useState(firstOfMonth());
@@ -362,6 +418,9 @@ export default function Dashboard() {
         </Link>
       </form>
       {rangeErr && <div className="db-filter-err" role="alert">{rangeErr}</div>}
+
+      {/* ── Plan et reçus : appel à passer au plan supérieur ── */}
+      <QuotaCard account={account} usage={usage} />
 
       {/* ── Alerte de déficit sur la période ────────────────── */}
       {stats.netProfit < 0 && (

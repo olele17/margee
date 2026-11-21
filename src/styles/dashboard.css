@@ -438,6 +438,56 @@
 .db-challenge-btn { flex-shrink: 0; min-height: 44px; }
 .db-challenge--empty .db-card-sub { max-width: 560px; }
 
+/* ── Plan et reçus (appel à passer au plan supérieur) ────────── */
+.db-quota {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(20, 22, 28, 0.04), 0 8px 24px rgba(20, 22, 28, 0.04);
+}
+.db-quota-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  background: var(--cream-2);
+  color: var(--gold-dark);
+}
+.db-quota-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.db-quota-title {
+  font-family: 'Bricolage Grotesque', 'Inter', sans-serif;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.db-quota-text { font-size: 13.5px; color: var(--muted-text); }
+.db-quota-progress { display: flex; align-items: center; gap: 10px; margin-top: 6px; max-width: 420px; }
+.db-quota-count { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.db-quota-btn { flex-shrink: 0; min-height: 44px; }
+
+/* Approche de la limite : accent or */
+.db-quota--near { border-color: var(--gold); background: var(--beige); }
+
+/* Limite atteinte : carte noire mise en avant, bouton or */
+.db-quota--reached {
+  background: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 0 16px 40px rgba(15, 17, 21, 0.18);
+}
+.db-quota--reached .db-quota-icon { background: var(--gold); color: var(--ink); }
+.db-quota--reached .db-quota-title { color: #ffffff; }
+.db-quota--reached .db-quota-text { color: #D9D5CC; }
+.db-quota--reached .db-quota-count { color: #ffffff; }
+.db-quota--reached .nc-bar { background: rgba(255, 255, 255, 0.15); }
+.db-quota--reached .nc-bar-fill.is-failed { background: var(--danger-on-dark); }
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1280px) {
   .db-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -463,6 +513,9 @@
   .db-challenge { flex-wrap: wrap; align-items: flex-start; }
   .db-challenge-main { flex-basis: calc(100% - 70px); }
   .db-challenge-btn { width: 100%; justify-content: center; }
+  .db-quota { flex-wrap: wrap; align-items: flex-start; }
+  .db-quota-main { flex-basis: calc(100% - 70px); }
+  .db-quota-btn { width: 100%; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

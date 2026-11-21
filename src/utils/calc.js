@@ -170,3 +170,33 @@ export function computeChallengeProgress(challenge, sales, ads, products = [], n
     status, isBudget, productMissing, unit: CHALLENGE_TYPES[type]?.unit || 'money',
   };
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   QUOTA DE REÇUS DU PLAN
+   Free : limite sur le TOTAL des reçus émis (sans durée).
+   Plans payants : limite par MOIS (heure de Dakar).
+   usage = [{ period: 'AAAA-MM-01', issued }] (reçus émis, suppressions
+   de ventes non déduites : même règle que la fonction SQL record_sale).
+   ══════════════════════════════════════════════════════════════════ */
+export function computeReceiptQuota(plan, usage = [], now = new Date()) {
+  if (!plan || plan.receiptLimit == null) {
+    return { limited: false, limit: null, used: 0, remaining: null, scope: null, reached: false, nearLimit: false, percent: 0 };
+  }
+  const monthly = !!plan.days;
+  const currentMonth = now.toLocaleDateString('en-CA', { timeZone: 'Africa/Dakar' }).slice(0, 7);
+  const used = usage
+    .filter((u) => !monthly || String(u.period).slice(0, 7) === currentMonth)
+    .reduce((a, u) => a + Number(u.issued || 0), 0);
+  const limit = plan.receiptLimit;
+  const remaining = Math.max(limit - used, 0);
+  return {
+    limited: true,
+    limit,
+    used,
+    remaining,
+    scope: monthly ? 'month' : 'total',
+    reached: used >= limit,
+    nearLimit: used < limit && used / limit >= 0.8,
+    percent: Math.min((used / limit) * 100, 100),
+  };
+}
