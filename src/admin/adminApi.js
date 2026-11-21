@@ -48,3 +48,12 @@ export async function getAdminRole() {
   }
   return data?.role || null;
 }
+
+// ── VUE D'ENSEMBLE ───────────────────────────────────────────────
+// Fonction SQL admin_overview (tout admin) : statuts réels, MRR,
+// revenus, plans, inscriptions, conversion, listes rapides.
+export async function getOverview() {
+  const { data, error } = await sb().rpc('admin_overview');
+  if (error) throw adminError(error, 'Impossible de charger la vue d\'ensemble.');
+  return data;
+}

@@ -13,6 +13,7 @@ import AdminRoute from './admin/AdminRoute';
 import AdminLayout from './admin/AdminLayout';
 import AdminLogin from './admin/pages/AdminLogin';
 import ComingSoon from './admin/pages/ComingSoon';
+import AdminOverview from './admin/pages/Overview';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -71,7 +72,7 @@ export default function App() {
           {/* Espace super admin (séparé de /app) */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-            <Route index element={<ComingSoon title="Vue d'ensemble" step={2} icon="ti-layout-dashboard" />} />
+            <Route index element={<AdminOverview />} />
             <Route path="marchands" element={<ComingSoon title="E-commerçants" step={3} icon="ti-building-store" />} />
             <Route path="marchands/:id" element={<ComingSoon title="Fiche e-commerçant" step={3} icon="ti-building-store" />} />
             <Route path="paiements" element={<ComingSoon title="Paiements et abonnements" step={4} icon="ti-credit-card" />} />
