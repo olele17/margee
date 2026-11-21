@@ -40,3 +40,28 @@ export function daysUntil(value) {
 }
 
 export const PLAN_LABELS = { free: 'Free', pro: 'Pro', elite: 'Elite' };
+
+/** Libellés des actions du journal (admin_audit_log.action) */
+export const ACTION_LABELS = {
+  'merchant.suspend': 'Compte suspendu',
+  'merchant.reactivate': 'Compte réactivé',
+  'merchant.change_plan': 'Plan changé',
+  'merchant.extend_trial': 'Essai prolongé',
+  'merchant.extend_subscription': 'Abonnement prolongé',
+  'merchant.reset_password': 'Email de réinitialisation envoyé',
+  'merchant.delete': 'Compte supprimé',
+  'admin_notes.insert': 'Note interne ajoutée',
+  'admin_notes.update': 'Note interne modifiée',
+  'admin_notes.delete': 'Note interne supprimée',
+  'account_flags.insert': 'Compte signalé',
+  'account_flags.update': 'Signalement mis à jour',
+  'account_flags.delete': 'Signalement supprimé',
+  'subscriptions.update': 'Abonnement modifié',
+  'subscriptions.insert': 'Abonnement créé',
+  'plans.update': 'Plan modifié',
+  'platform_settings.update': 'Paramètre modifié',
+  'admins.insert': 'Admin ajouté',
+  'admins.update': 'Rôle admin modifié',
+  'admins.delete': 'Admin retiré',
+};
+export const actionLabel = (a) => ACTION_LABELS[a] || a;

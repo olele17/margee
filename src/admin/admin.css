@@ -168,3 +168,101 @@
 @media (prefers-reduced-motion: reduce) {
   .adm-spin { animation: none; }
 }
+
+/* ══ Étape 3 : e-commerçants ═════════════════════════════════════ */
+/* Filtres */
+.adm-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px 16px;
+}
+.adm-input-icon { position: relative; }
+.adm-input-icon i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-text); font-size: 17px; pointer-events: none; }
+.adm-input-icon input { padding-left: 38px; }
+.adm-filter-reset { min-height: 42px; }
+
+/* Tableau dense, triable, lignes cliquables */
+.adm-table td { padding: 8px 10px; }
+.adm-table th { padding: 0; }
+.adm-sort {
+  display: inline-flex; align-items: center; gap: 4px;
+  width: 100%; padding: 11px 10px;
+  background: none; border: none; cursor: pointer;
+  font: inherit; color: inherit; text-align: left; white-space: nowrap;
+}
+.adm-sort i { font-size: 14px; color: var(--border-hover); }
+.adm-sort.is-active i { color: var(--gold-dark-aa); }
+.adm-sort:hover i { color: var(--ink); }
+.adm-table th:first-child .adm-sort { padding-left: 18px; }
+.adm-row { cursor: pointer; }
+.adm-row:hover td { background: var(--cream-2); }
+.adm-sub { font-size: 12px; color: var(--muted-text); }
+.adm-flag-icon { color: var(--danger); margin-left: 6px; font-size: 14px; vertical-align: -2px; }
+
+/* Pagination */
+.adm-pager {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
+  padding: 12px 16px; border-top: 1px solid var(--border-light);
+}
+.adm-pager-info { margin-right: auto; font-size: 13px; color: var(--muted-text); }
+.adm-pager-page { font-size: 13px; font-weight: 700; color: var(--ink); }
+
+/* Fiche */
+.adm-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--muted-text); width: fit-content; }
+.adm-back:hover { color: var(--ink); }
+.adm-detail-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.adm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-btn-warn { color: var(--danger); }
+.adm-grid-2--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.adm-infos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin: 0; }
+.adm-info dt { font-size: 12px; font-weight: 700; color: var(--muted-text); }
+.adm-info dd { margin: 2px 0 0; font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.adm-stats--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.adm-stats--4 .adm-stat { box-shadow: none; }
+.adm-stats--4 .adm-stat-value { font-size: 19px; }
+.db-card-sub .ti-lock { color: var(--gold-dark-aa); }
+
+/* Notes et signalements */
+.adm-inline-form { display: grid; gap: 8px; justify-items: start; margin-bottom: 14px; }
+.adm-inline-form .field { width: 100%; }
+.adm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.adm-list li { padding: 10px 0; border-top: 1px solid #F3ECDA; display: grid; gap: 4px; }
+.adm-list li.is-resolved .adm-list-text { color: var(--muted-text); text-decoration: line-through; }
+.adm-list-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.adm-list-text { margin: 0; font-size: 13.5px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.adm-list-empty { font-size: 13px; color: var(--muted-text); }
+
+/* Message de confirmation */
+.adm-toast {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 12px;
+  background: var(--success-bg); color: var(--success);
+  font-size: 13px; font-weight: 600;
+}
+
+/* Fenêtre d'action */
+.adm-dialog { max-width: 460px; }
+.adm-dialog-fields { display: grid; gap: 12px; margin-top: 16px; text-align: left; }
+.adm-dialog-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.adm-dialog .db-filter-err { margin-top: 12px; text-align: left; }
+.adm-dialog .confirm-actions { margin-top: 18px; }
+.adm-dialog textarea { resize: vertical; }
+
+@media (max-width: 1100px) {
+  .adm-filters { grid-template-columns: 1fr 1fr 1fr; }
+  .adm-filter-search { grid-column: 1 / -1; }
+  .adm-grid-2--even { grid-template-columns: minmax(0, 1fr); }
+  .adm-stats--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .adm-filters { grid-template-columns: 1fr 1fr; }
+  .adm-infos, .adm-dialog-row { grid-template-columns: 1fr; }
+  .adm-actions { width: 100%; }
+  .adm-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .adm-pager-info { width: 100%; }
+}
+@media (max-width: 420px) {
+  .adm-stats--4 { grid-template-columns: minmax(0, 1fr); }
+}

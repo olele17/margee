@@ -14,6 +14,8 @@ import AdminLayout from './admin/AdminLayout';
 import AdminLogin from './admin/pages/AdminLogin';
 import ComingSoon from './admin/pages/ComingSoon';
 import AdminOverview from './admin/pages/Overview';
+import AdminMerchants from './admin/pages/Merchants';
+import AdminMerchantDetail from './admin/pages/MerchantDetail';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -73,8 +75,8 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
             <Route index element={<AdminOverview />} />
-            <Route path="marchands" element={<ComingSoon title="E-commerçants" step={3} icon="ti-building-store" />} />
-            <Route path="marchands/:id" element={<ComingSoon title="Fiche e-commerçant" step={3} icon="ti-building-store" />} />
+            <Route path="marchands" element={<AdminMerchants />} />
+            <Route path="marchands/:id" element={<AdminMerchantDetail />} />
             <Route path="paiements" element={<ComingSoon title="Paiements et abonnements" step={4} icon="ti-credit-card" />} />
             <Route path="plans" element={<AdminRoute permission="plans.view"><ComingSoon title="Plans et tarifs" step={5} icon="ti-tags" /></AdminRoute>} />
             <Route path="parametres" element={<AdminRoute permission="settings.view"><ComingSoon title="Paramètres et équipe" step={6} icon="ti-settings" /></AdminRoute>} />
