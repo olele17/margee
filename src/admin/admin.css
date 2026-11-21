@@ -1,0 +1,85 @@
+/* ══════════════════════════════════════════════════════════════
+   ESPACE ADMIN (préfixe adm-)
+   Réutilise les variables et composants de /app (global.css) :
+   aucune nouvelle couleur. Mise en page plus dense que /app.
+   ══════════════════════════════════════════════════════════════ */
+
+/* Badge or « ADMIN » */
+.adm-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.adm .sidebar-logo { gap: 8px; }
+.adm .sidebar-logo .adm-badge { margin-left: auto; }
+.adm-badge--top { font-size: 10.5px; padding: 6px 10px; border-radius: 999px; }
+
+/* Compte connecté dans la barre latérale */
+.adm-me {
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.adm-me-email { font-size: 12.5px; color: #D9D5CC; overflow-wrap: anywhere; }
+.adm-role { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Mise en page dense */
+.adm-main { width: 100%; }
+.adm-page {
+  padding: 22px 28px 40px;
+  max-width: 1480px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+.adm-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.adm-page-title {
+  font-family: 'Bricolage Grotesque', 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.adm-page-sub { font-size: 13px; color: var(--muted-text); margin-top: 2px; }
+
+/* Page en construction (étapes suivantes) */
+.adm-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 56px 20px;
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  color: var(--muted-text);
+}
+.adm-soon i { font-size: 40px; color: var(--gold); }
+.adm-soon strong { color: var(--ink); font-size: 16px; }
+
+@media (max-width: 840px) {
+  .adm-page { padding: 16px 16px 32px; }
+  .adm-page-title { font-size: 20px; }
+}
+@media (max-width: 480px) {
+  .adm-badge--top { display: none; }
+}

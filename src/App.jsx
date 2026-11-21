@@ -9,7 +9,10 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Subscribe from './pages/Subscribe';
-import SuperAdmin from './pages/SuperAdmin';
+import AdminRoute from './admin/AdminRoute';
+import AdminLayout from './admin/AdminLayout';
+import AdminLogin from './admin/pages/AdminLogin';
+import ComingSoon from './admin/pages/ComingSoon';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -65,7 +68,18 @@ export default function App() {
           </Route>
 
           {/* Platform operator */}
-          <Route path="/admin" element={<SuperAdmin />} />
+          {/* Espace super admin (séparé de /app) */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route index element={<ComingSoon title="Vue d'ensemble" step={2} icon="ti-layout-dashboard" />} />
+            <Route path="marchands" element={<ComingSoon title="E-commerçants" step={3} icon="ti-building-store" />} />
+            <Route path="marchands/:id" element={<ComingSoon title="Fiche e-commerçant" step={3} icon="ti-building-store" />} />
+            <Route path="paiements" element={<ComingSoon title="Paiements et abonnements" step={4} icon="ti-credit-card" />} />
+            <Route path="plans" element={<AdminRoute permission="plans.view"><ComingSoon title="Plans et tarifs" step={5} icon="ti-tags" /></AdminRoute>} />
+            <Route path="parametres" element={<AdminRoute permission="settings.view"><ComingSoon title="Paramètres et équipe" step={6} icon="ti-settings" /></AdminRoute>} />
+            <Route path="journal" element={<ComingSoon title="Journal d'activité" step={6} icon="ti-history" />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

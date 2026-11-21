@@ -244,8 +244,9 @@ export async function updateBusinessInfo(accountId, info) {
 // null = illimité.
 export const PLANS = {
   free: {
-    label: 'Free', price: 0, days: null, receiptLimit: 3,
+    label: 'Free', price: 0, days: null, receiptLimit: 3, trialDays: 3,
     features: [
+      'Essai gratuit de 3 jours',
       '3 reçus PDF pour tester',
       'Produits et coût de revient',
       'Ventes avec calcul du bénéfice',
@@ -654,68 +655,4 @@ export async function getReceiptUsage(accountId) {
   return rows.map((r) => ({ period: r.period, issued: Number(r.issued) }));
 }
 
-// ══════════════════════════════════════════════════════════════════
-// SUPER-ADMIN (réservé aux comptes présents dans la table admins)
-// Les règles RLS et les fonctions SQL vérifient le rôle côté base :
-// un e-commerçant qui appellerait ces fonctions ne verrait rien.
-// ══════════════════════════════════════════════════════════════════
-
-// Le compte connecté est-il administrateur ?
-export async function isCurrentUserAdmin() {
-  if (!supabase) return false;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return false;
-  const { data, error } = await supabase.from('admins').select('role').eq('user_id', session.user.id).maybeSingle();
-  if (error) return false;
-  return !!data;
-}
-
-// Liste des comptes (profil + abonnement). Jamais les notes ni l'épargne.
-export async function listAllAccounts() {
-  const rows = await fetchAll(() => requireSupabase().from('profiles')
-    .select('id, business_name, owner_name, phone, email, created_at, last_login_at, subscriptions(*)')
-    .order('created_at', { ascending: false }));
-  return rows.map((p) => {
-    const sub = Array.isArray(p.subscriptions) ? p.subscriptions[0] : p.subscriptions;
-    const a = mapAccount(p, sub);
-    delete a.receiptSettings; // inutile côté admin
-    return a;
-  });
-}
-
-// Statut d'abonnement modifié par un admin (RLS : admins uniquement).
-// Réactiver : plan conservé (Free si aucun), et prolongation si la
-// période est échue.
-export async function setSubscriptionStatus(accountId, status) {
-  const sb = requireSupabase();
-  const { data: sub, error: e1 } = await sb.from('subscriptions').select('*').eq('account_id', accountId).maybeSingle();
-  if (e1) throw toDataError(e1);
-  if (!sub) throw new Error('Abonnement introuvable.');
-  const row = { status };
-  if (status === 'active') {
-    row.plan_id = sub.plan_id || 'free';
-    const plan = PLANS[row.plan_id];
-    if (plan?.days && (!sub.expires_at || new Date(sub.expires_at) <= new Date())) {
-      row.expires_at = new Date(Date.now() + plan.days * 86400000).toISOString();
-    }
-    if (!plan?.days) row.expires_at = null;
-  }
-  const { data, error } = await sb.from('subscriptions').update(row).eq('account_id', accountId).select().maybeSingle();
-  if (error) throw toDataError(error, "Impossible de modifier l'abonnement. Réessaie.");
-  if (!data) throw new Error('Action réservée aux administrateurs.');
-  return data;
-}
-
-// Statistiques de la plateforme (fonction SQL admin_dashboard_stats)
-export async function getAdminStats() {
-  const { data, error } = await requireSupabase().rpc('admin_dashboard_stats');
-  if (error) throw toDataError(error, 'Impossible de charger les statistiques.');
-  return data;
-}
-
-// Totaux d'un e-commerçant (fonction SQL admin_merchant_overview)
-export async function getMerchantOverview(accountId) {
-  const { data, error } = await requireSupabase().rpc('admin_merchant_overview', { p_account_id: accountId });
-  if (error) throw toDataError(error, "Impossible de charger le résumé de l'e-commerçant.");
-  return data;
-}
+// L'espace admin a ses propres appels : voir src/admin/adminApi.js

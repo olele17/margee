@@ -12,6 +12,11 @@ export default function Subscribe() {
   const [billing, setBilling] = useState('monthly'); // monthly | yearly
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  // L'essai gratuit ne se fait qu'une fois : une fois utilisé, seuls les
+  // plans payants sont proposés.
+  const sub = account?.subscription || {};
+  const trialUsed = !!sub.trialEndsAt && !(sub.status === 'trial' && new Date(sub.trialEndsAt) > new Date());
+  const offered = Object.entries(PLANS).filter(([key]) => !(trialUsed && key === 'free'));
   const selected = PLANS[plan];
   const paid = selected.price > 0;
 
@@ -45,10 +50,10 @@ export default function Subscribe() {
   ];
 
   return (
-    <AuthShell wide label="Abonnement" title="Choisis ton plan" subtitle="Tu peux changer de plan à tout moment.">
+    <AuthShell wide label="Abonnement" title="Choisis ton plan" subtitle={trialUsed ? "Ton essai gratuit est terminé : choisis Pro ou Elite pour continuer." : "Tu peux changer de plan à tout moment."}>
         <div style={{ marginTop: 28 }}>
-          <div className="plan-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            {Object.entries(PLANS).map(([key, p]) => (
+          <div className="plan-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${offered.length}, 1fr)`, gap: 10 }}>
+            {offered.map(([key, p]) => (
               <button
                 type="button"
                 key={key}
