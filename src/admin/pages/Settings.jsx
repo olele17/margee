@@ -153,7 +153,7 @@ function Team({ onToast }) {
             {team?.map((m) => (
               <tr key={m.user_id} className={m.disabled_at ? 'adm-row-off' : ''}>
                 <td>
-                  <div className="db-strong">{m.email}{m.is_me && <span className="adm-me">toi</span>}</div>
+                  <div className="db-strong">{m.email}{m.is_me && <span className="adm-me-tag">toi</span>}</div>
                   <div className="adm-sub">
                     Ajouté le {dateFr(m.created_at)}{m.invited_by_email ? ` par ${m.invited_by_email}` : ''}
                   </div>

@@ -316,7 +316,7 @@
 .adm-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-light); background: var(--beige); }
 .adm-switch-row.is-off { border-color: var(--danger); background: var(--danger-bg); }
 .adm-row-off td { color: var(--muted-text); }
-.adm-me { display: inline-block; width: auto; vertical-align: middle; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--cream-2); color: var(--gold-dark-aa); font-size: 11px; font-weight: 700; }
+.adm-me-tag { display: inline-block; width: auto; vertical-align: middle; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--cream-2); color: var(--gold-dark-aa); font-size: 11px; font-weight: 700; }
 .adm-row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .adm-invite { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-light); }
 .adm-invite-title { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0 0 12px; }
