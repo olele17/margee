@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import useBusinessData from '../../hooks/useBusinessData';
 import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, computeChallengeProgress, CHALLENGE_TYPES, computeReceiptQuota } from '../../utils/calc';
 import * as api from '../../services/api';
+import usePlans from '../../hooks/usePlans';
 import { challengeAdvice } from '../../components/ChallengeCard';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import '../../styles/dashboard.css';
@@ -258,14 +259,15 @@ function ActiveChallenge({ challenges, sales, ads, products }) {
 
 /* ── Carte « plan et reçus » (quota du plan + appel à passer au plan supérieur) ── */
 function QuotaCard({ account, usage }) {
+  const { all } = usePlans();
   const planKey = account?.subscription?.plan;
-  const plan = api.PLANS[planKey];
+  const plan = all[planKey];
   const quota = useMemo(() => computeReceiptQuota(plan, usage), [plan, usage]);
   if (!plan || !quota.limited) return null;           // Elite : illimité
   if (planKey !== 'free' && !quota.reached && !quota.nearLimit) return null; // Pro : seulement à l'approche de la limite
 
   const isFree = planKey === 'free';
-  const nextPlan = isFree ? api.PLANS.pro : api.PLANS.elite;
+  const nextPlan = (isFree ? all.pro : all.elite) || all.pro;
   const scopeLabel = quota.scope === 'month' ? 'ce mois-ci' : 'au total';
 
   // Essai gratuit : jours restants (l'essai finit au bout des jours OU des reçus)

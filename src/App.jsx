@@ -18,6 +18,7 @@ import AdminOverview from './admin/pages/Overview';
 import AdminMerchants from './admin/pages/Merchants';
 import AdminMerchantDetail from './admin/pages/MerchantDetail';
 import AdminPayments from './admin/pages/Payments';
+import AdminPlans from './admin/pages/Plans';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -89,7 +90,7 @@ export default function App() {
             <Route path="marchands" element={<AdminMerchants />} />
             <Route path="marchands/:id" element={<AdminMerchantDetail />} />
             <Route path="paiements" element={<AdminPayments />} />
-            <Route path="plans" element={<AdminRoute permission="plans.view"><ComingSoon title="Plans et tarifs" step={5} icon="ti-tags" /></AdminRoute>} />
+            <Route path="plans" element={<AdminRoute permission="plans.view"><AdminPlans /></AdminRoute>} />
             <Route path="parametres" element={<AdminRoute permission="settings.view"><ComingSoon title="Paramètres et équipe" step={6} icon="ti-settings" /></AdminRoute>} />
             <Route path="journal" element={<ComingSoon title="Journal d'activité" step={6} icon="ti-history" />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />

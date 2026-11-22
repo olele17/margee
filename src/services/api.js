@@ -277,7 +277,68 @@ export const PLANS = {
 // Paiement à l'année : 12 mois pour le prix de 10 (2 mois offerts).
 export const ANNUAL_MONTHS_PAID = 10;
 export const ANNUAL_DAYS = 365;
-export const annualPrice = (plan) => plan.price * ANNUAL_MONTHS_PAID;
+export const annualPrice = (plan, months = ANNUAL_MONTHS_PAID) => plan.price * months;
+
+// ── CATALOGUE DES PLANS (lu dans la base) ────────────────────────
+// La table plans (modifiée depuis /admin/plans) est la source de
+// vérité. PLANS ci-dessus ne sert que de valeur de départ et de repli si
+// la base ne répond pas : la page s'affiche toujours.
+//   plans : plans ACTIFS, dans l'ordre d'affichage (landing, abonnement)
+//   all   : tous les plans, actifs ou non (abonnement en cours, quotas)
+function withTrialLine(features, trialDays) {
+  const line = `Essai gratuit de ${trialDays} jour${trialDays > 1 ? 's' : ''}`;
+  return [line, ...features.filter((f) => !/^Essai gratuit de \d+ jours?$/.test(f))];
+}
+
+export const FALLBACK_CATALOG = {
+  plans: PLANS,
+  all: PLANS,
+  annualMonths: ANNUAL_MONTHS_PAID,
+  trialDays: PLANS.free.trialDays,
+  fromDb: false,
+};
+
+export function mapPlanRow(row, trialDays = PLANS.free.trialDays) {
+  const free = Number(row.price) === 0;
+  const features = Array.isArray(row.features) ? row.features.map(String) : [];
+  return {
+    label: row.name,
+    price: Number(row.price) || 0,
+    oldPrice: row.old_price == null ? null : Number(row.old_price),
+    days: row.duration_days == null ? null : Number(row.duration_days),
+    receiptLimit: row.receipt_limit == null ? null : Number(row.receipt_limit),
+    highlight: !!row.highlight,
+    isActive: row.is_active !== false,
+    sortOrder: Number(row.sort_order) || 0,
+    features: free ? withTrialLine(features, trialDays) : features,
+    ...(free ? { trialDays } : {}),
+  };
+}
+
+export async function fetchPlanCatalog() {
+  const sb = requireSupabase();
+  const [plansRes, settingsRes] = await Promise.all([
+    sb.from('plans')
+      .select('id, name, price, old_price, duration_days, receipt_limit, highlight, features, is_active, sort_order')
+      .order('sort_order', { ascending: true })
+      .order('price', { ascending: true }),
+    sb.from('platform_settings').select('key, value').in('key', ['annual_months_paid', 'trial_days']),
+  ]);
+  if (plansRes.error || !plansRes.data?.length) throw toError(plansRes.error, 'Plans indisponibles.');
+  const setting = (key, fallback) => {
+    const v = Number(settingsRes.data?.find((s) => s.key === key)?.value);
+    return Number.isFinite(v) && v >= 1 ? v : fallback;
+  };
+  const trialDays = setting('trial_days', PLANS.free.trialDays);
+  const all = {};
+  const plans = {};
+  plansRes.data.forEach((row) => {
+    const p = mapPlanRow(row, trialDays);
+    all[row.id] = p;
+    if (p.isActive) plans[row.id] = p;
+  });
+  return { plans, all, annualMonths: setting('annual_months_paid', ANNUAL_MONTHS_PAID), trialDays, fromDb: true };
+}
 
 /**
  * Choix du plan.

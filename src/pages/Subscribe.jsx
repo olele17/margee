@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PLANS, ANNUAL_MONTHS_PAID, annualPrice, subscribe } from '../services/api';
+import { annualPrice, subscribe } from '../services/api';
+import usePlans from '../hooks/usePlans';
 import { fmt } from '../utils/calc';
 import AuthShell from '../components/AuthShell';
 
 export default function Subscribe() {
   const { account, refresh } = useAuth();
   const navigate = useNavigate();
-  const [plan, setPlan] = useState('pro');
+  // Plans actifs lus dans la base (modifiables depuis /admin/plans)
+  const { plans, annualMonths } = usePlans();
+  const [choice, setChoice] = useState('pro');
   const [billing, setBilling] = useState('monthly'); // monthly | yearly
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -16,8 +19,13 @@ export default function Subscribe() {
   // plans payants sont proposés.
   const sub = account?.subscription || {};
   const trialUsed = !!sub.trialEndsAt && !(sub.status === 'trial' && new Date(sub.trialEndsAt) > new Date());
-  const offered = Object.entries(PLANS).filter(([key]) => !(trialUsed && key === 'free'));
-  const selected = PLANS[plan];
+  const offered = Object.entries(plans).filter(([key, p]) => !(trialUsed && p.price === 0));
+  // Plan choisi encore proposé ? Sinon le premier plan payant proposé.
+  const plan = offered.some(([key]) => key === choice)
+    ? choice
+    : (offered.find(([, p]) => p.price > 0) || offered[0])[0];
+  const setPlan = setChoice;
+  const selected = plans[plan];
   const paid = selected.price > 0;
 
   const pay = async () => {
@@ -41,12 +49,12 @@ export default function Subscribe() {
   };
 
   const billingOptions = [
-    { key: 'monthly', title: 'Mensuel', price: `${fmt(selected.price)} / mois`, note: 'Sans engagement' },
+    { key: 'monthly', title: 'Mensuel', price: `${fmt(selected.price)} / mois`, note: 'Sans engagement', old: selected.oldPrice ? fmt(selected.oldPrice) : null },
     {
       key: 'yearly',
       title: 'Annuel',
-      price: `${fmt(annualPrice(selected))} / an`,
-      note: `${fmt(selected.price)} × ${ANNUAL_MONTHS_PAID} mois : ${12 - ANNUAL_MONTHS_PAID} mois offerts`,
+      price: `${fmt(annualPrice(selected, annualMonths))} / an`,
+      note: `${fmt(selected.price)} × ${annualMonths} mois : ${12 - annualMonths} mois offerts`,
       old: fmt(selected.price * 12),
     },
   ];
@@ -122,7 +130,7 @@ export default function Subscribe() {
             {loading
               ? (paid ? 'Redirection vers Bictorys…' : 'Activation…')
               : paid
-                ? `Payer ${fmt(billing === 'yearly' ? annualPrice(selected) : selected.price)} avec Bictorys →`
+                ? `Payer ${fmt(billing === 'yearly' ? annualPrice(selected, annualMonths) : selected.price)} avec Bictorys →`
                 : 'Commencer gratuitement →'}
           </button>
           {paid && (

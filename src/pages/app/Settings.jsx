@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../services/api';
-import { PLANS, annualPrice } from '../../services/api';
+import { annualPrice } from '../../services/api';
+import usePlans from '../../hooks/usePlans';
 import { fmt } from '../../utils/calc';
 import SignaturePad from '../../components/SignaturePad';
 
@@ -20,6 +21,7 @@ const STATUS_LABELS = { active: 'Actif', pending: 'En attente', expired: 'Expir�
 
 export default function Settings() {
   const { account, refresh } = useAuth();
+  const catalog = usePlans(); // plans lus dans la base
   // Entreprise
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -54,7 +56,7 @@ export default function Settings() {
 
   if (!account) return null;
   const sub = account.subscription || {};
-  const plan = sub.plan ? PLANS[sub.plan] : null;
+  const plan = sub.plan ? catalog.all[sub.plan] : null;
   const yearly = sub.billing === 'yearly';
 
   const readImage = async (e, setter) => {
@@ -265,7 +267,7 @@ export default function Settings() {
               {plan && (
                 <div>
                   <b>Plan :</b> {plan.label}
-                  {plan.price > 0 && (yearly ? ` — ${fmt(annualPrice(plan))} / an` : ` — ${fmt(plan.price)} / mois`)}
+                  {plan.price > 0 && (yearly ? ` — ${fmt(annualPrice(plan, catalog.annualMonths))} / an` : ` — ${fmt(plan.price)} / mois`)}
                 </div>
               )}
               {sub.expiresAt && <div><b>Expire le :</b> {new Date(sub.expiresAt).toLocaleDateString('fr-FR')}</div>}

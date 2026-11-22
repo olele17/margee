@@ -21,7 +21,7 @@ export function adminError(error, fallback = 'Action impossible. Réessaie.') {
   if (!error) return new Error(fallback);
   if (isNetworkError(error)) return new Error('Connexion impossible, réessaie.');
   const msg = String(error.message || '');
-  if (['P0001', 'P0002', '22023', '42501'].includes(error.code) && /[éèàçù]|^(Accès|Action|Motif|Compte|Plan|Le |La |Les )/.test(msg)) {
+  if (['P0001', 'P0002', '22023', '42501'].includes(error.code) && /[éèàçù]|^(Accès|Action|Motif|Compte|Plan|Prix|Indique|Ordre|Impossible|Ce |Cette |Le |La |Les )/.test(msg)) {
     return new Error(msg);
   }
   if (error.code === '42501') return new Error('Action réservée à un autre rôle administrateur.');
@@ -193,6 +193,41 @@ export async function listAllPayments(filters) {
  */
 export async function activatePayment(paymentId, bictorysRef, reason) {
   const { data, error } = await sb().rpc('admin_activate_payment', { p_payment_id: paymentId, p_bictorys_ref: bictorysRef, p_reason: reason });
+  if (error) throw adminError(error);
+  return data;
+}
+
+// ── PLANS ET TARIFS ──────────────────────────────────────────────
+// Lecture : table plans (publique). Modification : admin_update_plan
+// (super_admin, motif obligatoire, journalisée). La limite de reçus n'est
+// pas modifiable ici (elle toucherait les abonnements en cours).
+export async function listPlansAdmin() {
+  const { data, error } = await sb().from('plans')
+    .select('id, name, price, old_price, duration_days, receipt_limit, highlight, features, is_active, sort_order, updated_at')
+    .order('sort_order', { ascending: true });
+  if (error) throw adminError(error, 'Impossible de charger les plans.');
+  return data;
+}
+
+export async function getPlanStats() {
+  const { data, error } = await sb().rpc('admin_plan_stats');
+  if (error) throw adminError(error, 'Impossible de charger les abonnés par plan.');
+  return data || {};
+}
+
+export async function updatePlan(id, form, reason) {
+  const { data, error } = await sb().rpc('admin_update_plan', {
+    p_id: id,
+    p_name: form.name,
+    p_price: form.price,
+    p_old_price: form.oldPrice,
+    p_duration_days: form.durationDays,
+    p_features: form.features,
+    p_sort_order: form.sortOrder,
+    p_highlight: form.highlight,
+    p_is_active: form.isActive,
+    p_reason: reason,
+  });
   if (error) throw adminError(error);
   return data;
 }

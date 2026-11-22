@@ -61,6 +61,7 @@ export const ACTION_LABELS = {
   'subscriptions.update': 'Abonnement modifié',
   'subscriptions.insert': 'Abonnement créé',
   'plans.update': 'Plan modifié',
+  'plan.update': 'Plan et tarif modifiés',
   'platform_settings.update': 'Paramètre modifié',
   'admins.insert': 'Admin ajouté',
   'admins.update': 'Rôle admin modifié',

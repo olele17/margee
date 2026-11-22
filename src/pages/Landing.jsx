@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PLANS, ANNUAL_MONTHS_PAID, annualPrice } from '../services/api';
+import { ANNUAL_MONTHS_PAID, annualPrice } from '../services/api';
+import usePlans from '../hooks/usePlans';
 import './Landing.css';
 
 /* ── Icônes outline (style lucide, trait fin) ───────────────── */
@@ -160,10 +161,55 @@ function DashboardMock() {
   );
 }
 
-/* ── Tarifs ─────────────────────────────────────────────────── */
+/* ── Carte tarif (aussi utilisée par l'aperçu de /admin/plans) ── */
+export function PlanCard({ planKey, plan, yearly = false, annualMonths = ANNUAL_MONTHS_PAID, preview = false }) {
+  const featured = !!plan.highlight;
+  const paid = plan.price > 0;
+  const freeMonths = 12 - annualMonths;
+  // Prix barré : celui saisi dans l'admin (mensuel), ou 12 mois en annuel
+  const oldPrice = yearly ? plan.price * 12 : plan.oldPrice;
+  const cta = paid ? `Choisir ${plan.label}` : 'Commencer gratuitement';
+  const btnClass = `lp-btn ${featured ? 'lp-btn--gold' : 'lp-btn--dark'} lp-btn--block`;
+  return (
+    <article className={`lp-plan${featured ? ' lp-plan--featured' : ''}`}>
+      {featured && <span className="lp-plan-badge">Le plus complet</span>}
+      <h3 className="lp-plan-name">{plan.label}</h3>
+      <div className="lp-plan-price">
+        {paid ? (
+          <>
+            {oldPrice > 0 && <s className="lp-plan-old">{money(oldPrice)} F</s>}
+            <strong>{money(yearly ? annualPrice(plan, annualMonths) : plan.price)} F</strong>
+            <span>{yearly ? '/an' : '/mois'}</span>
+          </>
+        ) : (
+          <strong>Gratuit</strong>
+        )}
+      </div>
+      <p className="lp-plan-note">
+        {paid
+          ? (yearly ? `Soit ${money(plan.price)} F × ${annualMonths} mois` : 'Sans engagement')
+          : 'Pour tester Margee+'}
+      </p>
+      <ul className="lp-plan-list">
+        {plan.features.map((f, i) => (
+          <li key={`${i}-${f}`}><Icon name="check" size={18} />{f}</li>
+        ))}
+        {paid && yearly && <li><Icon name="check" size={18} />{freeMonths} mois offerts en payant à l'année</li>}
+      </ul>
+      {preview ? (
+        <span className={btnClass} aria-hidden="true">{cta}</span>
+      ) : (
+        <Link to={`/inscription?plan=${planKey}`} className={btnClass}>{cta}</Link>
+      )}
+    </article>
+  );
+}
+
+/* ── Tarifs (lus dans la base, modifiables depuis /admin/plans) ── */
 function Pricing() {
   const [yearly, setYearly] = useState(false);
-  const freeMonths = 12 - ANNUAL_MONTHS_PAID;
+  const { plans, annualMonths } = usePlans();
+  const freeMonths = 12 - annualMonths;
 
   return (
     <section id="tarifs" className="lp-section" aria-labelledby="lp-tarifs-title">
@@ -180,42 +226,12 @@ function Pricing() {
           </div>
         </div>
 
-        <div className="lp-plans">
-          {Object.entries(PLANS).map(([key, plan]) => {
-            const featured = !!plan.highlight;
-            const paid = plan.price > 0;
-            return (
-              <article key={key} className={`lp-plan lp-reveal${featured ? ' lp-plan--featured' : ''}`}>
-                {featured && <span className="lp-plan-badge">Le plus complet</span>}
-                <h3 className="lp-plan-name">{plan.label}</h3>
-                <div className="lp-plan-price">
-                  {paid ? (
-                    <>
-                      {yearly && <s className="lp-plan-old">{money(plan.price * 12)} F</s>}
-                      <strong>{money(yearly ? annualPrice(plan) : plan.price)} F</strong>
-                      <span>{yearly ? '/an' : '/mois'}</span>
-                    </>
-                  ) : (
-                    <strong>Gratuit</strong>
-                  )}
-                </div>
-                <p className="lp-plan-note">
-                  {paid
-                    ? (yearly ? `Soit ${money(plan.price)} F × ${ANNUAL_MONTHS_PAID} mois` : 'Sans engagement')
-                    : 'Pour tester Margee+'}
-                </p>
-                <ul className="lp-plan-list">
-                  {plan.features.map((f) => (
-                    <li key={f}><Icon name="check" size={18} />{f}</li>
-                  ))}
-                  {paid && yearly && <li><Icon name="check" size={18} />{freeMonths} mois offerts en payant à l'année</li>}
-                </ul>
-                <Link to={`/inscription?plan=${key}`} className={`lp-btn ${featured ? 'lp-btn--gold' : 'lp-btn--dark'} lp-btn--block`}>
-                  {paid ? `Choisir ${plan.label}` : 'Commencer gratuitement'}
-                </Link>
-              </article>
-            );
-          })}
+        {/* L'animation d'apparition porte sur le bloc entier : les cartes
+            peuvent changer quand les plans arrivent de la base. */}
+        <div className="lp-plans lp-reveal">
+          {Object.entries(plans).map(([key, plan]) => (
+            <PlanCard key={key} planKey={key} plan={plan} yearly={yearly} annualMonths={annualMonths} />
+          ))}
         </div>
       </div>
     </section>
@@ -263,6 +279,7 @@ function Faq() {
 
 /* ── Footer ─────────────────────────────────────────────────── */
 function Footer() {
+  const { plans } = usePlans();
   const toTop = () => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
@@ -294,7 +311,7 @@ function Footer() {
           <div className="lp-footer-col">
             <h2 className="lp-mono lp-footer-title">Plans</h2>
             <ul className="lp-footer-plans">
-              {Object.entries(PLANS).map(([key, p]) => (
+              {Object.entries(plans).map(([key, p]) => (
                 <li key={key}>
                   <a href="#tarifs">
                     <span>{p.label}</span>

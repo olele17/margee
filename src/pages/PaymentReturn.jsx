@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getPaymentStatus, PLANS } from '../services/api';
+import { getPaymentStatus } from '../services/api';
+import usePlans from '../hooks/usePlans';
 import AuthShell from '../components/AuthShell';
 
 const POLL_MS = 3000;
@@ -14,6 +15,7 @@ const MAX_WAIT_MS = 90000;
  */
 export default function PaymentReturn() {
   const { refresh } = useAuth();
+  const { all } = usePlans();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const reference = params.get('ref') || '';
@@ -49,7 +51,7 @@ export default function PaymentReturn() {
     return () => { alive = false; clearTimeout(timer); };
   }, [reference, errorReturn, refresh]);
 
-  const planName = payment?.plan_id ? PLANS[payment.plan_id]?.label : '';
+  const planName = payment?.plan_id ? all[payment.plan_id]?.label : '';
 
   if (state === 'success') {
     return (
