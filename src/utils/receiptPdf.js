@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { fmt } from './calc';
 import { amountInWordsFcfa } from './numberToWords';
 import { getReceiptColors } from './receiptTheme';
+import { drawFreeBranding } from './pdfBrand';
 
 const FULL_MONTHS = [
   'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
@@ -217,6 +218,8 @@ export function downloadReceiptPdf(account, sale) {
   const footer = [account.businessName, rs.address, account.phone && `Tél : ${account.phone}`, contactEmail && `Email : ${contactEmail}`]
     .filter(Boolean).join('  •  ');
   doc.text(footer, pageW / 2, pageH - 8, { align: 'center', maxWidth: rightX - marginX });
+  // Plan Free : « Créé gratuitement avec Margee+ »
+  drawFreeBranding(doc, account, pageW, pageH - 8);
 
   doc.save(`Recu_${sale.receiptNumber}.pdf`);
 }

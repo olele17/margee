@@ -802,3 +802,93 @@ export async function sendSupportMessage(body) {
 export async function markSupportRead() {
   await requireSupabase().rpc('mark_support_read');
 }
+
+// ══════════════════════════════════════════════════════════════════
+// FACTURES ET DEVIS (table documents, protégée par la RLS)
+// La base attribue le numéro (DEV-/FAC-AAAA-0001) et calcule tous les
+// montants : le navigateur n'envoie que les lignes, la remise et la TVA.
+// ══════════════════════════════════════════════════════════════════
+function mapDocument(r) {
+  return {
+    id: r.id,
+    kind: r.kind,
+    number: r.number,
+    status: r.status,
+    clientName: r.client_name,
+    clientPhone: r.client_phone || '',
+    clientEmail: r.client_email || '',
+    clientAddress: r.client_address || '',
+    issueDate: r.issue_date,
+    dueDate: r.due_date || '',
+    items: (r.items || []).map((it) => ({ description: it.description, qty: Number(it.qty), unitPrice: Number(it.unit_price), total: Number(it.total) })),
+    discountPercent: Number(r.discount_percent) || 0,
+    taxRate: Number(r.tax_rate) || 0,
+    subtotal: Number(r.subtotal),
+    discountAmount: Number(r.discount_amount),
+    taxAmount: Number(r.tax_amount),
+    total: Number(r.total),
+    notes: r.notes || '',
+    sourceQuoteId: r.source_quote_id,
+    paidAt: r.paid_at,
+    createdAt: r.created_at,
+  };
+}
+
+export async function listDocuments() {
+  const { data, error } = await requireSupabase()
+    .from('documents').select('*').order('issue_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000);
+  if (error) throw toDataError(error, 'Impossible de charger les factures et devis.');
+  return (data || []).map(mapDocument);
+}
+
+export async function getDocument(id) {
+  const { data, error } = await requireSupabase().from('documents').select('*').eq('id', id).maybeSingle();
+  if (error) throw toDataError(error, 'Impossible de charger le document.');
+  return data ? mapDocument(data) : null;
+}
+
+/** Crée ou met à jour (id présent) ; renvoie le document enregistré. */
+export async function saveDocument(doc) {
+  const row = {
+    status: doc.status,
+    client_name: doc.clientName.trim(),
+    client_phone: doc.clientPhone.trim() || null,
+    client_email: doc.clientEmail.trim() || null,
+    client_address: doc.clientAddress.trim() || null,
+    issue_date: doc.issueDate,
+    due_date: doc.dueDate || null,
+    items: doc.items.map((it) => ({
+      description: String(it.description || '').trim(),
+      qty: Number(String(it.qty).replace(',', '.')),
+      unit_price: Math.round(Number(String(it.unitPrice).replace(/\s/g, ''))),
+    })),
+    discount_percent: Number(String(doc.discountPercent || 0).replace(',', '.')) || 0,
+    tax_rate: Number(String(doc.taxRate || 0).replace(',', '.')) || 0,
+    notes: doc.notes.trim() || null,
+  };
+  const sb = requireSupabase();
+  const q = doc.id
+    ? sb.from('documents').update(row).eq('id', doc.id)
+    : sb.from('documents').insert({ ...row, kind: doc.kind, number: 'DEV-0000-0000' });
+  const { data, error } = await q.select('*').single();
+  if (error) throw toDataError(error, 'Impossible d\'enregistrer le document.');
+  return mapDocument(data);
+}
+
+export async function setDocumentStatus(id, status) {
+  const { data, error } = await requireSupabase().from('documents').update({ status }).eq('id', id).select('*').single();
+  if (error) throw toDataError(error, 'Impossible de changer le statut.');
+  return mapDocument(data);
+}
+
+export async function deleteDocument(id) {
+  const { error } = await requireSupabase().from('documents').delete().eq('id', id);
+  if (error) throw toDataError(error, 'Suppression impossible.');
+}
+
+/** Devis → facture (mêmes lignes, remise, TVA) ; renvoie l'id de la facture */
+export async function convertQuoteToInvoice(quoteId) {
+  const { data, error } = await requireSupabase().rpc('convert_quote_to_invoice', { p_quote_id: quoteId });
+  if (error) throw toDataError(error, 'Impossible de créer la facture.');
+  return data;
+}

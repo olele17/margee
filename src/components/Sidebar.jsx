@@ -10,6 +10,7 @@ const MENU_LINKS = [
   { to: '/app/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
   { to: '/app/produits', icon: 'ti-package', label: 'Produits' },
   { to: '/app/ventes', icon: 'ti-receipt', label: 'Ventes' },
+  { to: '/app/documents', icon: 'ti-file-invoice', label: 'Factures & devis' },
   { to: '/app/pubs', icon: 'ti-speakerphone', label: 'Pubs' },
   { to: '/app/depenses', icon: 'ti-wallet', label: 'Dépenses' },
   { to: '/app/investissements', icon: 'ti-chart-pie', label: 'Investissements' },

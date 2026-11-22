@@ -30,6 +30,8 @@ import Expenses from './pages/app/Expenses';
 import Investments from './pages/app/Investments';
 import Settings from './pages/app/Settings';
 import Notes from './pages/app/Notes';
+import Documents from './pages/app/Documents';
+import DocumentEditor from './pages/app/DocumentEditor';
 import Challenges from './pages/app/Challenges';
 
 export default function App() {
@@ -80,6 +82,9 @@ export default function App() {
             <Route path="investissements" element={<Investments />} />
             <Route path="notes" element={<Notes />} />
             <Route path="challenges" element={<Challenges />} />
+            <Route path="documents" element={<Documents />} />
+            <Route path="documents/nouveau" element={<DocumentEditor />} />
+            <Route path="documents/:id" element={<DocumentEditor />} />
             <Route path="parametres" element={<Settings />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>

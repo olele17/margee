@@ -6,6 +6,7 @@ import { annualPrice } from '../../services/api';
 import usePlans from '../../hooks/usePlans';
 import { getPlanOffer } from '../../utils/planOffer';
 import { RECEIPT_THEMES, DEFAULT_RECEIPT_COLORS, getReceiptColors, isHexColor, matchTheme } from '../../utils/receiptTheme';
+import { isFreeTier, MARGEE_URL } from '../../utils/pdfBrand';
 import { fmt } from '../../utils/calc';
 import SignaturePad from '../../components/SignaturePad';
 
@@ -324,6 +325,9 @@ export default function Settings() {
               <div className="receipt-preview-bar" style={{ background: colors.accent, color: colors.onAccent }}><span>TOTAL PAYÉ</span><span>18 500 Fr</span></div>
               {note && <div className="receipt-preview-note" style={{ background: colors.noteBg }}>{note}</div>}
               <div className="rc-prev-thanks" style={{ color: colors.thanks }}>MERCI POUR VOTRE CONFIANCE !</div>
+              {isFreeTier(account) && (
+                <div className="rc-prev-brand" title="Mention retirée avec les plans Pro et Elite">Créé gratuitement avec Margee+ · {MARGEE_URL}</div>
+              )}
               <div className="receipt-preview-muted" style={{ marginTop: 10 }}>
                 Fait à {city || '—'}
               </div>

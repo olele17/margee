@@ -15,6 +15,7 @@ const PAGE_TITLES = {
   '/app/investissements': 'Investissements',
   '/app/notes': 'Notes',
   '/app/challenges': 'Challenges',
+  '/app/documents': 'Factures & devis',
   '/app/parametres': 'Paramètres',
 };
 
@@ -25,7 +26,8 @@ export default function AppLayout() {
   const { sales, ads, investments, ready } = useBusinessData();
   const location = useLocation();
   const navigate = useNavigate();
-  const pageTitle = PAGE_TITLES[location.pathname] || 'Margee+';
+  const pageTitle = PAGE_TITLES[location.pathname]
+    || (location.pathname.startsWith('/app/documents') ? 'Factures & devis' : 'Margee+');
   const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | 'messages' | 'notifications'
