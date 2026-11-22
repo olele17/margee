@@ -20,6 +20,7 @@ import AdminPayments from './admin/pages/Payments';
 import AdminPlans from './admin/pages/Plans';
 import AdminSettings from './admin/pages/Settings';
 import AdminAuditLog from './admin/pages/AuditLog';
+import AdminMessages from './admin/pages/Messages';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -90,6 +91,7 @@ export default function App() {
             <Route index element={<AdminOverview />} />
             <Route path="marchands" element={<AdminMerchants />} />
             <Route path="marchands/:id" element={<AdminMerchantDetail />} />
+            <Route path="messages" element={<AdminRoute permission="messages.view"><AdminMessages /></AdminRoute>} />
             <Route path="paiements" element={<AdminPayments />} />
             <Route path="plans" element={<AdminRoute permission="plans.view"><AdminPlans /></AdminRoute>} />
             <Route path="parametres" element={<AdminRoute permission="settings.view"><AdminSettings /></AdminRoute>} />

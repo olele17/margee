@@ -299,3 +299,40 @@ export async function listAudit({ admin = '', action = '', account = '', from = 
   if (error) throw adminError(error, 'Impossible de charger le journal.');
   return data;
 }
+
+// ── MESSAGES (super admin et support) ────────────────────────────
+// Conversations e-commerçant ⇄ équipe. Chaque fonction vérifie dans la
+// base que l'appelant est un admin actif.
+export async function listThreads({ status = '', unread = '', search = '', page = 1, pageSize = 30 } = {}) {
+  const { data, error } = await sb().rpc('admin_list_threads', {
+    p_status: status || null,
+    p_unread: unread === '' ? null : unread === 'yes',
+    p_search: search || null,
+    p_page: page,
+    p_page_size: pageSize,
+  });
+  if (error) throw adminError(error, 'Impossible de charger les conversations.');
+  return data;
+}
+
+export async function getThread(accountId) {
+  const { data, error } = await sb().rpc('admin_thread_messages', { p_account_id: accountId });
+  if (error) throw adminError(error, 'Impossible de charger la conversation.');
+  return data;
+}
+
+export async function sendTeamMessage(accountId, body) {
+  const { error } = await sb().rpc('admin_send_support_message', { p_account_id: accountId, p_body: body });
+  if (error) throw adminError(error, 'Message non envoyé. Réessaie.');
+}
+
+export async function setThreadStatus(accountId, status) {
+  const { error } = await sb().rpc('admin_set_thread_status', { p_account_id: accountId, p_status: status });
+  if (error) throw adminError(error);
+}
+
+export async function getUnreadThreads() {
+  const { data, error } = await sb().rpc('admin_unread_threads');
+  if (error) return 0;
+  return Number(data) || 0;
+}

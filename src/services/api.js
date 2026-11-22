@@ -763,3 +763,38 @@ export async function getReceiptUsage(accountId) {
 }
 
 // L'espace admin a ses propres appels : voir src/admin/adminApi.js
+
+// ══════════════════════════════════════════════════════════════════
+// MESSAGERIE AVEC L'ÉQUIPE MARGEE+ (support)
+// Une conversation par compte. Lecture protégée par la RLS (ses propres
+// messages uniquement) ; écriture par la fonction send_support_message.
+// Le nom de l'admin qui répond n'est jamais exposé : « Équipe Margee+ ».
+// ══════════════════════════════════════════════════════════════════
+export async function getSupportConversation() {
+  const sb = requireSupabase();
+  const [{ data: messages, error: e1 }, { data: thread, error: e2 }] = await Promise.all([
+    sb.from('support_messages').select('id, sender, body, created_at').order('created_at', { ascending: true }).limit(500),
+    sb.from('support_threads').select('status, last_message_at, last_sender, merchant_read_at').maybeSingle(),
+  ]);
+  if (e1 || e2) throw toDataError(e1 || e2, 'Impossible de charger la conversation.');
+  return { messages: messages || [], thread };
+}
+
+/** Réponse de l'équipe pas encore lue ? */
+export async function getSupportUnread() {
+  const { data, error } = await requireSupabase()
+    .from('support_threads').select('last_sender, last_message_at, merchant_read_at').maybeSingle();
+  if (error || !data) return false;
+  // Comparer des dates, pas des textes (le nombre de décimales varie)
+  return data.last_sender === 'admin'
+    && (!data.merchant_read_at || new Date(data.merchant_read_at).getTime() < new Date(data.last_message_at).getTime());
+}
+
+export async function sendSupportMessage(body) {
+  const { error } = await requireSupabase().rpc('send_support_message', { p_body: body });
+  if (error) throw toDataError(error, 'Message non envoyé. Réessaie.');
+}
+
+export async function markSupportRead() {
+  await requireSupabase().rpc('mark_support_read');
+}

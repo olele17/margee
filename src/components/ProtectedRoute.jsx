@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isSubscriptionActive } from '../services/api';
 import AuthShell from './AuthShell';
+import SupportChat from './SupportChat';
 
 /**
  * Compte suspendu par l'équipe Margee+ : aucune page privée n'est
@@ -26,6 +27,8 @@ function SuspendedScreen() {
       >
         Se déconnecter
       </button>
+      {/* Le support reste joignable même quand le compte est suspendu */}
+      <SupportChat />
     </AuthShell>
   );
 }

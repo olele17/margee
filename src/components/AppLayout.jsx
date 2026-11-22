@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import SupportChat from './SupportChat';
 import { useAuth } from '../context/AuthContext';
 import useBusinessData from '../hooks/useBusinessData';
 import { generateInsights, generateActivity } from '../utils/insights';
@@ -195,6 +196,8 @@ export default function AppLayout() {
           </div>
         )}
       </div>
+      {/* Messagerie avec l'équipe Margee+ (toutes les pages de l'espace) */}
+      <SupportChat />
     </div>
   );
 }

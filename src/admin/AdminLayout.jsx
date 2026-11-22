@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAdmin } from './AdminRoute';
 import { ADMIN_NAV, ROLES, can } from './permissions';
+import { getUnreadThreads } from './adminApi';
 import './admin.css';
 
 /**
@@ -21,6 +22,17 @@ export default function AdminLayout() {
   const cancelLogout = useCallback(() => setConfirmLogout(false), []);
 
   const nav = ADMIN_NAV.filter((n) => can(role, n.permission));
+
+  // Badge « Messages » : conversations qui attendent une réponse
+  const [unreadMsgs, setUnreadMsgs] = useState(0);
+  useEffect(() => {
+    if (!can(role, 'messages.view')) return undefined;
+    let alive = true;
+    const tick = () => getUnreadThreads().then((n) => { if (alive) setUnreadMsgs(n); });
+    tick();
+    const t = setInterval(tick, 30000);
+    return () => { alive = false; clearInterval(t); };
+  }, [role, location.pathname]);
   const current = [...nav].sort((a, b) => b.to.length - a.to.length).find((n) => location.pathname.startsWith(n.to));
 
   const logout = async () => {
@@ -58,6 +70,9 @@ export default function AdminLayout() {
                 <i className={`ti ${l.icon}`} />
                 <span>{l.label}</span>
               </div>
+              {l.to === '/admin/messages' && unreadMsgs > 0 && (
+                <span className="sidebar-badge" aria-label={`${unreadMsgs} conversation${unreadMsgs > 1 ? 's' : ''} en attente de réponse`}>{unreadMsgs}</span>
+              )}
             </NavLink>
           ))}
         </nav>

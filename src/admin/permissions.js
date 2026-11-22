@@ -42,6 +42,7 @@ const RULES = {
   'settings.edit': SUPER,
   'team.manage': SUPER,
   'audit.view': BOTH,
+  'messages.view': BOTH,           // messagerie avec les e-commerçants
 };
 
 /** Le rôle donne-t-il cette permission ? */
@@ -53,6 +54,7 @@ export function can(role, permission) {
 export const ADMIN_NAV = [
   { to: '/admin', end: true, icon: 'ti-layout-dashboard', label: "Vue d'ensemble", permission: 'overview.view' },
   { to: '/admin/marchands', icon: 'ti-building-store', label: 'E-commerçants', permission: 'merchants.view' },
+  { to: '/admin/messages', icon: 'ti-messages', label: 'Messages', permission: 'messages.view' },
   { to: '/admin/paiements', icon: 'ti-credit-card', label: 'Paiements', permission: 'payments.view' },
   { to: '/admin/plans', icon: 'ti-tags', label: 'Plans et tarifs', permission: 'plans.view' },
   { to: '/admin/parametres', icon: 'ti-settings', label: 'Paramètres et équipe', permission: 'settings.view' },

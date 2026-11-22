@@ -134,6 +134,11 @@ export default function MerchantDetail() {
           <div className="adm-page-sub">Inscrit le {dateFr(a.created_at)} · {a.email}</div>
         </div>
         <div className="adm-actions">
+          {can(role, 'messages.view') && (
+            <Link className="btn btn-outline" to={`/admin/messages?compte=${id}`}>
+              <i className="ti ti-message-circle" aria-hidden="true" /> Message
+            </Link>
+          )}
           {canExtend && (
             <button type="button" className="btn btn-outline" onClick={() => { setDays('7'); setDialog('extend'); }}>
               <i className="ti ti-calendar-plus" aria-hidden="true" /> Prolonger
