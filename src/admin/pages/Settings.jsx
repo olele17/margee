@@ -17,7 +17,10 @@ function PlatformSettings({ canEdit, onToast }) {
   const [err, setErr] = useState('');
   const [dialog, setDialog] = useState(false);
 
-  const load = () => getPlatformSettings().then((s) => { setSaved(s); setForm(s); }).catch((e) => setErr(e.message));
+  // reset = true après un enregistrement ; sinon une saisie en cours est gardée
+  const load = (reset = false) => getPlatformSettings()
+    .then((s) => { setSaved(s); setForm((f) => (reset || !f ? s : f)); })
+    .catch((e) => setErr(e.message));
   useEffect(() => { load(); }, []);
 
   if (!form) return <section className="db-card adm-set">{err ? <div className="db-filter-err" role="alert">{err}</div> : <div className="adm-loading">Chargement…</div>}</section>;
@@ -101,7 +104,7 @@ function PlatformSettings({ canEdit, onToast }) {
         onSubmit={async (reason) => {
           await updatePlatformSettings({ signupOpen: form.signupOpen, closedMessage: msg, trialDays: trial }, reason);
           setDialog(false);
-          await load();
+          await load(true);
           reloadPlans(); // la durée d'essai apparaît dans les avantages du plan Free
           onToast('Paramètres enregistrés.');
         }}

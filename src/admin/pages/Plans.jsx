@@ -59,7 +59,10 @@ function FieldError({ id, children }) {
 
 function PlanEditor({ row, stats, canEdit, otherPaidActive, annualMonths, trialDays, onSaved }) {
   const free = Number(row.price) === 0;
-  const initial = useMemo(() => toForm(row), [row]);
+  // Réinitialisé seulement si la ligne change vraiment en base (un simple
+  // rechargement de la liste ne doit pas effacer une saisie en cours).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initial = useMemo(() => toForm(row), [row.id, row.updated_at]);
   const [form, setForm] = useState(initial);
   const [yearly, setYearly] = useState(false);
   const [dialog, setDialog] = useState(false);
