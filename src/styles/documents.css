@@ -68,3 +68,7 @@
   .doc-line { padding-bottom: 10px; border-bottom: 1px solid var(--border-light); }
   .doc-line--head { display: none; }
 }
+/* Document qu'on vient d'enregistrer : mis en évidence dans la liste */
+.doc-row-new td { background: var(--cream-2); animation: doc-flash 2.4s ease; }
+@keyframes doc-flash { from { background: var(--gold-light); } to { background: var(--cream-2); } }
+@media (prefers-reduced-motion: reduce) { .doc-row-new td { animation: none; } }

@@ -49,12 +49,17 @@ export default function DocumentEditor() {
   const [toast, setToast] = useState(location.state?.flash || '');
 
   useEffect(() => {
-    if (isNew) return;
+    if (isNew) return undefined;
+    // Une réponse arrivée après coup (double chargement, réseau lent)
+    // ne doit jamais écraser ce que l'utilisateur est en train de saisir.
+    let alive = true;
     api.getDocument(id).then((d) => {
+      if (!alive) return;
       if (!d) { setErr('Document introuvable.'); return; }
       setSaved(d);
-      setForm(toForm(d));
-    }).catch((e) => setErr(e.message));
+      setForm((f) => (f && f.id === d.id ? f : toForm(d)));
+    }).catch((e) => { if (alive) setErr(e.message); });
+    return () => { alive = false; };
   }, [id, isNew]);
 
   useEffect(() => {
@@ -92,11 +97,13 @@ export default function DocumentEditor() {
     setSaving(true);
     try {
       const d = await api.saveDocument({ ...form, id: saved?.id });
-      setSaved(d);
-      setForm(toForm(d));
       if (andPdf) downloadDocumentPdf(account, d);
-      setToast(`${KIND_LABELS[kind]} ${d.number} enregistré${kind === 'invoice' ? 'e' : ''}.`);
-      if (isNew) navigate(`/app/documents/${d.id}`, { replace: true });
+      // Retour à la liste Factures & devis, document mis en évidence
+      navigate('/app/documents', {
+        replace: isNew,
+        state: { flash: `${KIND_LABELS[kind]} ${d.number} enregistré${kind === 'invoice' ? 'e' : ''}${andPdf ? ' et PDF téléchargé' : ''}.`, highlight: d.id },
+      });
+      return;
     } catch (e) {
       setErr(e.message);
     } finally {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../services/api';
 import { fmt } from '../../utils/calc';
@@ -22,12 +22,20 @@ export default function Documents() {
   const [docs, setDocs] = useState(null);
   const [search, setSearch] = useState('');
   const [err, setErr] = useState('');
-  const [toast, setToast] = useState('');
+  const location = useLocation();
+  // Message et ligne mise en évidence au retour de l'éditeur
+  const [toast, setToast] = useState(location.state?.flash || '');
+  const highlight = location.state?.highlight || null;
   const [toDelete, setToDelete] = useState(null);
   const [busy, setBusy] = useState('');
 
   const load = useCallback(() => api.listDocuments().then(setDocs).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(''), 4500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 3500); };
 
@@ -139,7 +147,7 @@ export default function Documents() {
               {shown.map((d) => {
                 const s = statusInfo(d);
                 return (
-                  <tr key={d.id}>
+                  <tr key={d.id} className={highlight === d.id ? 'doc-row-new' : undefined}>
                     <td>
                       <Link to={`/app/documents/${d.id}`} className="bold doc-num">{d.number}</Link>
                       <div className="doc-kind">{KIND_LABELS[d.kind]}</div>
