@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmDialog from './ConfirmDialog';
+import InstallButton from '../pwa/InstallButton';
 import usePlans from '../hooks/usePlans';
 import { getPlanOffer } from '../utils/planOffer';
 import { fmt } from '../utils/calc';
@@ -73,6 +74,13 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
 
       <div className="sidebar-section-title">GENERAL</div>
       <nav className="sidebar-nav">
+        {/* Visible tant que l'application n'est pas installée */}
+        <InstallButton className="sidebar-link sidebar-install" onDone={onClose}>
+          <div className="sidebar-link-content">
+            <i className="ti ti-device-mobile-down" aria-hidden="true" />
+            <span>Installer l'app</span>
+          </div>
+        </InstallButton>
         {GENERAL_LINKS.map((l) => (
           <NavLink
             key={l.to}

@@ -4,6 +4,7 @@ import useBusinessData from '../../hooks/useBusinessData';
 import * as api from '../../services/api';
 import { fmt, today, selfPaidDelivery } from '../../utils/calc';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
+import { SALE_RECORDED_EVENT } from '../../pwa/InstallPrompt';
 
 const blank = {
   date: today(), productId: '', qty: 1,
@@ -56,6 +57,7 @@ export default function Sales() {
       deliveryPaidByClient: !!form.deliveryPaidByClient,
     });
     setLastReceipt(sale);
+    window.dispatchEvent(new Event(SALE_RECORDED_EVENT));
     setForm(blank);
     setOpen(false);
     reload();

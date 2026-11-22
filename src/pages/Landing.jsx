@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ANNUAL_MONTHS_PAID, annualPrice } from '../services/api';
 import usePlans from '../hooks/usePlans';
+import InstallButton from '../pwa/InstallButton';
 import './Landing.css';
 
 /* ── Icônes outline (style lucide, trait fin) ───────────────── */
@@ -75,7 +76,7 @@ const FAQ = [
   { q: 'Mes données sont-elles privées ?', a: 'Oui. Chaque e-commerçant a son espace personnel, personne d\'autre n\'y a accès.' },
   { q: 'Comment je paie mon abonnement ?', a: 'Paiement en ligne sécurisé, avec activation automatique de ton abonnement.' },
   { q: 'Que se passe-t-il après mes reçus gratuits ?', a: 'Le plan Free te permet de tester avec quelques reçus. Pour continuer, tu choisis Pro ou Elite.' },
-  { q: 'Je peux l\'utiliser sur mon téléphone ?', a: 'Oui, Margee+ fonctionne sur mobile.' },
+  { q: 'Je peux l\'utiliser sur mon téléphone ?', a: 'Oui. Margee+ s\'installe comme une application sur ton téléphone, Android ou iPhone, sans passer par un store : touche « Installer l\'app » en haut de cette page (sur mobile) ou dans le menu de ton espace. Elle s\'ouvre ensuite en plein écran depuis ton écran d\'accueil. Si tu arrives depuis TikTok ou WhatsApp, ouvre d\'abord le lien dans Chrome (Android) ou Safari (iPhone).' },
 ];
 
 const NAV = [
@@ -366,6 +367,8 @@ export default function Landing() {
             <Link to="/connexion" className="lp-btn lp-btn--white lp-btn--sm">Se connecter</Link>
             <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--sm">Démarrer</Link>
           </div>
+          {/* Mobile : bouton discret, tant que l'app n'est pas installée */}
+          <InstallButton className="lp-install" />
           <button
             type="button"
             className="lp-burger"

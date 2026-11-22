@@ -782,3 +782,28 @@
 @media (prefers-reduced-motion: reduce) {
   html:has(.lp) { scroll-behavior: auto; }
 }
+
+/* Bouton discret « Installer l'app » (mobile uniquement) */
+.lp-install { display: none; }
+@media (max-width: 1024px) {
+  .lp-install {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 14px;
+    margin-left: auto;
+    border-radius: 999px;
+    border: 1px solid rgba(212, 160, 58, 0.45);
+    background: transparent;
+    color: var(--lp-gold);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .lp-install .ti { font-size: 17px; }
+  .lp-install:focus-visible { outline: 3px solid var(--lp-gold); outline-offset: 2px; }
+}
+@media (max-width: 359px) { .lp-install span { display: none; } }

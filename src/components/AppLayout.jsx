@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import SupportChat from './SupportChat';
+import InstallPrompt from '../pwa/InstallPrompt';
 import { useAuth } from '../context/AuthContext';
 import useBusinessData from '../hooks/useBusinessData';
 import { generateInsights, generateActivity } from '../utils/insights';
@@ -200,6 +201,8 @@ export default function AppLayout() {
       </div>
       {/* Messagerie avec l'équipe Margee+ (toutes les pages de l'espace) */}
       <SupportChat />
+      {/* Proposition d'installer l'application (20 s ou première vente) */}
+      <InstallPrompt />
     </div>
   );
 }

@@ -9,6 +9,8 @@ import { RECEIPT_THEMES, DEFAULT_RECEIPT_COLORS, getReceiptColors, isHexColor, m
 import { isFreeTier, MARGEE_URL } from '../../utils/pdfBrand';
 import { fmt } from '../../utils/calc';
 import SignaturePad from '../../components/SignaturePad';
+import InstallButton from '../../pwa/InstallButton';
+import useInstallPrompt from '../../pwa/useInstallPrompt';
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -25,6 +27,7 @@ const STATUS_LABELS = { active: 'Actif', trial: 'Essai gratuit', pending: 'En at
 
 export default function Settings() {
   const { account, refresh } = useAuth();
+  const install = useInstallPrompt();
   const catalog = usePlans(); // plans lus dans la base
   // Entreprise
   const [businessName, setBusinessName] = useState('');
@@ -297,6 +300,21 @@ export default function Settings() {
               )}
             </div>
           </div>
+
+          {/* ── Application sur le téléphone (tant qu'elle n'est pas installée) */}
+          {install.canPropose && (
+            <div className="card" style={{ marginTop: 18 }}>
+              <div className="form-card-title" style={{ marginBottom: 8 }}>
+                <i className="ti ti-device-mobile" /> Application Margee+
+              </div>
+              <div className="settings-install">
+                <div className="settings-install-text">
+                  Installe Margee+ sur ton téléphone ou ton ordinateur : ton business s'ouvre en un geste depuis l'écran d'accueil, en plein écran.
+                </div>
+                <InstallButton className="btn btn-primary" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Aperçu + abonnement ─────────────────────────────── */}
