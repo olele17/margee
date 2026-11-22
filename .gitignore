@@ -11,6 +11,8 @@ dist/
 mcp_config.json
 .env.*
 !.env.example
+# Valeurs PUBLIQUES du build Vercel (URL + clé publishable). Jamais de secret ici.
+!.env.production
 
 # Fichiers temporaires du CLI Supabase
 supabase/.temp/
