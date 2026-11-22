@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmDialog from './ConfirmDialog';
+import usePlans from '../hooks/usePlans';
+import { getPlanOffer } from '../utils/planOffer';
+import { fmt } from '../utils/calc';
 
 const MENU_LINKS = [
   { to: '/app/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
@@ -19,7 +22,12 @@ const GENERAL_LINKS = [
 ];
 
 export default function Sidebar({ open = false, onClose = () => {} }) {
-  const { doLogout } = useAuth();
+  const { doLogout, account } = useAuth();
+  const catalog = usePlans();
+  const offer = getPlanOffer(account, catalog);
+  // Encart d'abonnement : essai, plan Pro (passer à Elite) ou abonnement expiré
+  const showOffer = !!offer.action && (offer.action.kind === 'upgrade' || offer.expired);
+  const target = offer.action ? catalog.all[offer.action.plan] : null;
   const navigate = useNavigate();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const cancelLogout = useCallback(() => setConfirmLogout(false), []);
@@ -90,6 +98,27 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
           </div>
         </button>
       </nav>
+
+      {showOffer && target && (
+        <div className="sidebar-cta-card" role="region" aria-label="Abonnement">
+          <div className="sidebar-cta-icon" aria-hidden="true"><i className="ti ti-crown" /></div>
+          <div className="sidebar-cta-label">
+            {offer.trialActive
+              ? `Essai gratuit · ${offer.daysLeft} jour${offer.daysLeft > 1 ? 's' : ''}`
+              : offer.paidActive
+                ? `Plan ${offer.currentLabel}${offer.endsAt ? ` · jusqu'au ${new Date(offer.endsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`
+                : 'Abonnement expiré'}
+          </div>
+          <div className="sidebar-cta-title">{target.label}</div>
+          <div className="sidebar-cta-sub">
+            {fmt(target.price)} / mois
+            {target.receiptLimit == null ? ' · reçus illimités' : ` · ${target.receiptLimit} reçus / mois`}
+          </div>
+          <Link to={offer.href} className="sidebar-cta-btn" onClick={onClose}>
+            {offer.action.label} <i className="ti ti-arrow-right" aria-hidden="true" style={{ marginLeft: 6 }} />
+          </Link>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmLogout}

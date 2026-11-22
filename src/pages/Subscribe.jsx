@@ -1,25 +1,35 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { annualPrice, subscribe } from '../services/api';
 import usePlans from '../hooks/usePlans';
+import { getPlanOffer } from '../utils/planOffer';
 import { fmt } from '../utils/calc';
 import AuthShell from '../components/AuthShell';
+
+// « de Pro », « d'Elite » (élision devant une voyelle)
+const de = (label) => (/^[aeiouyàâéèêëîïôöûü]/i.test(label || '') ? `d'${label}` : `de ${label}`);
 
 export default function Subscribe() {
   const { account, refresh } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   // Plans actifs lus dans la base (modifiables depuis /admin/plans)
-  const { plans, annualMonths } = usePlans();
-  const [choice, setChoice] = useState('pro');
+  const catalog = usePlans();
+  const { plans, annualMonths } = catalog;
+  const offer = getPlanOffer(account, catalog);
+  // Plan visé : ?plan=elite (bouton « Passer à Elite »), sinon l'offre suggérée
+  const [choice, setChoice] = useState(() => params.get('plan') || offer.action?.plan || 'pro');
   const [billing, setBilling] = useState('monthly'); // monthly | yearly
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-  // L'essai gratuit ne se fait qu'une fois : une fois utilisé, seuls les
-  // plans payants sont proposés.
+  // L'essai gratuit ne se fait qu'une fois : une fois utilisé (ou pendant
+  // l'essai, ou avec un plan payant en cours), seuls les plans payants
+  // sont proposés.
   const sub = account?.subscription || {};
   const trialUsed = !!sub.trialEndsAt && !(sub.status === 'trial' && new Date(sub.trialEndsAt) > new Date());
-  const offered = Object.entries(plans).filter(([key, p]) => !(trialUsed && p.price === 0));
+  const hideFree = trialUsed || offer.trialActive || offer.paidActive;
+  const offered = Object.entries(plans).filter(([, p]) => !(hideFree && p.price === 0));
   // Plan choisi encore proposé ? Sinon le premier plan payant proposé.
   const plan = offered.some(([key]) => key === choice)
     ? choice
@@ -59,8 +69,23 @@ export default function Subscribe() {
     },
   ];
 
+  // Changement de plan payant : les jours restants sont convertis côté
+  // serveur au prorata des prix (même règle que apply_payment_to_subscription)
+  const currentPlan = offer.current ? catalog.all[offer.current] : null;
+  const switching = offer.paidActive && plan !== offer.current && paid;
+  const convertedDays = switching && offer.daysLeft && currentPlan?.price
+    ? Math.floor((offer.daysLeft * currentPlan.price) / selected.price) : 0;
+  const endLabel = offer.endsAt ? new Date(offer.endsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
+  const subtitle = offer.paidActive
+    ? `Ton plan actuel : ${offer.currentLabel}, valable jusqu'au ${endLabel}.`
+    : offer.trialActive
+      ? `Essai gratuit en cours : encore ${offer.daysLeft} jour${offer.daysLeft > 1 ? 's' : ''}.`
+      : trialUsed
+        ? 'Ton essai gratuit est terminé : choisis Pro ou Elite pour continuer.'
+        : 'Tu peux changer de plan à tout moment.';
+
   return (
-    <AuthShell wide label="Abonnement" title="Choisis ton plan" subtitle={trialUsed ? "Ton essai gratuit est terminé : choisis Pro ou Elite pour continuer." : "Tu peux changer de plan à tout moment."}>
+    <AuthShell wide label="Abonnement" title={offer.paidActive ? 'Changer ou prolonger ton plan' : 'Choisis ton plan'} subtitle={subtitle}>
         <div style={{ marginTop: 28 }}>
           <div className="plan-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${offered.length}, 1fr)`, gap: 10 }}>
             {offered.map(([key, p]) => (
@@ -79,7 +104,12 @@ export default function Subscribe() {
                   border: plan === key ? '2px solid var(--emerald-dark)' : '1.5px solid var(--border-light)',
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#777' }}>{p.label}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#777' }}>
+                  {p.label}
+                  {offer.paidActive && key === offer.current && (
+                    <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 999, background: 'var(--cream-2)', color: 'var(--gold-dark-aa)', textTransform: 'none', fontSize: 10.5 }}>Plan actuel</span>
+                  )}
+                </div>
                 <div className="plan-price" style={{ fontSize: 18, fontWeight: 800, margin: '4px 0' }}>
                   {p.price ? fmt(p.price) : 'Gratuit'}
                 </div>
@@ -125,6 +155,17 @@ export default function Subscribe() {
             ))}
           </ul>
 
+          {offer.paidActive && paid && (
+            <div className="au-info" role="note" style={{ marginTop: 18 }}>
+              <i className="ti ti-info-circle" aria-hidden="true" />
+              <p style={{ margin: 0 }}>
+                {switching
+                  ? `Tes ${offer.daysLeft} jour${offer.daysLeft > 1 ? 's' : ''} restants ${de(offer.currentLabel)} deviennent ${convertedDays} jour${convertedDays > 1 ? 's' : ''} ${de(selected.label)}, ajoutés à ta nouvelle période.`
+                  : `Ta période en cours est prolongée : les jours payés s'ajoutent après le ${endLabel}.`}
+              </p>
+            </div>
+          )}
+
           {err && <div className="au-err" role="alert" style={{ marginTop: 18 }}>{err}</div>}
           <button className="au-btn au-btn--gold" style={{ marginTop: 22 }} onClick={pay} disabled={loading}>
             {loading
@@ -137,6 +178,9 @@ export default function Subscribe() {
             <p style={{ fontSize: 12.5, color: 'var(--au-grey)', textAlign: 'center', marginTop: 12 }}>
               Wave · Orange Money · Carte bancaire, via Bictorys.
             </p>
+          )}
+          {(offer.paidActive || offer.trialActive) && (
+            <div className="au-switch"><Link to="/app/dashboard">← Retour à mon espace</Link></div>
           )}
         </div>
     </AuthShell>

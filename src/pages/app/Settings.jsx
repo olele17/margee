@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as api from '../../services/api';
 import { annualPrice } from '../../services/api';
 import usePlans from '../../hooks/usePlans';
+import { getPlanOffer } from '../../utils/planOffer';
 import { fmt } from '../../utils/calc';
 import SignaturePad from '../../components/SignaturePad';
 
@@ -17,7 +19,7 @@ function fileToDataUrl(file) {
 
 const MAX_IMAGE_BYTES = 1024 * 1024; // 1 Mo : les images sont stockées dans le navigateur
 
-const STATUS_LABELS = { active: 'Actif', pending: 'En attente', expired: 'Expiré' };
+const STATUS_LABELS = { active: 'Actif', trial: 'Essai gratuit', pending: 'En attente', expired: 'Expiré', suspended: 'Suspendu' };
 
 export default function Settings() {
   const { account, refresh } = useAuth();
@@ -57,6 +59,7 @@ export default function Settings() {
   if (!account) return null;
   const sub = account.subscription || {};
   const plan = sub.plan ? catalog.all[sub.plan] : null;
+  const offer = getPlanOffer(account, catalog);
   const yearly = sub.billing === 'yearly';
 
   const readImage = async (e, setter) => {
@@ -260,8 +263,8 @@ export default function Settings() {
             <div style={{ fontSize: 13, lineHeight: 2 }}>
               <div>
                 <b>Statut :</b>{' '}
-                <span className={`badge ${sub.status === 'active' ? 'ok' : sub.status === 'pending' ? 'pending' : 'off'}`}>
-                  {STATUS_LABELS[sub.status] || sub.status}
+                <span className={`badge ${offer.paidActive || offer.trialActive ? 'ok' : sub.status === 'pending' ? 'pending' : 'off'}`}>
+                  {offer.expired && sub.status !== 'pending' ? 'Expiré' : (STATUS_LABELS[sub.status] || sub.status)}
                 </span>
               </div>
               {plan && (
@@ -270,8 +273,22 @@ export default function Settings() {
                   {plan.price > 0 && (yearly ? ` — ${fmt(annualPrice(plan, catalog.annualMonths))} / an` : ` — ${fmt(plan.price)} / mois`)}
                 </div>
               )}
-              {sub.expiresAt && <div><b>Expire le :</b> {new Date(sub.expiresAt).toLocaleDateString('fr-FR')}</div>}
+              {offer.trialActive && sub.trialEndsAt && <div><b>Essai jusqu'au :</b> {new Date(sub.trialEndsAt).toLocaleDateString('fr-FR')}</div>}
+              {sub.expiresAt && <div><b>{offer.paidActive ? 'Valable jusqu\'au' : 'Expiré le'} :</b> {new Date(sub.expiresAt).toLocaleDateString('fr-FR')}</div>}
             </div>
+            {offer.action && (
+              <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+                <Link to={offer.href} className={`btn ${offer.action.kind === 'upgrade' || offer.expired ? 'btn-primary' : 'btn-outline'} btn-block`}>
+                  <i className={`ti ${offer.action.kind === 'upgrade' ? 'ti-arrow-big-up-lines' : 'ti-refresh'}`} aria-hidden="true" /> {offer.action.label}
+                </Link>
+                <Link to="/abonnement" className="btn btn-ghost btn-block btn-sm">Voir tous les plans</Link>
+                {offer.action.kind === 'upgrade' && offer.paidActive && (
+                  <p style={{ fontSize: 12, color: 'var(--muted-text)', margin: 0, lineHeight: 1.5 }}>
+                    Les jours restants de ton plan {offer.currentLabel} sont convertis et ajoutés à ton nouveau plan.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </aside>
       </div>
