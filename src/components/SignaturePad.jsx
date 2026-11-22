@@ -9,22 +9,34 @@ export default function SignaturePad({ value, onChange, height = 160 }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    const ratio = window.devicePixelRatio || 1;
-    const width = container.clientWidth;
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(ratio, ratio);
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#111827';
-    if (value) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, width, height);
-      img.src = value;
-    }
+    // Le canevas suit la largeur de son cadre (téléphone, rotation, fenêtre
+    // redimensionnée) : on le redimensionne et on redessine la signature.
+    let lastWidth = -1;
+    const setup = () => {
+      const width = container.clientWidth;
+      if (!width || width === lastWidth) return;
+      lastWidth = width;
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#111827';
+      if (value) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, width, height);
+        img.src = value;
+      }
+    };
+    setup();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => { if (!drawingRef.current) setup(); });
+    ro.observe(container);
+    return () => ro.disconnect();
   }, [height, value]);
 
   const getPos = (e) => {

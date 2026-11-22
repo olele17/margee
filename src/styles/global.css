@@ -1743,7 +1743,8 @@ td.bold {
 }
 
 @media (max-width: 1100px) {
-  .settings-layout { grid-template-columns: 1fr; }
+  .settings-layout { grid-template-columns: minmax(0, 1fr); }
+  .settings-layout > * { min-width: 0; }
   .settings-side { position: static; }
 }
 
@@ -2024,3 +2025,7 @@ td.bold {
 .rc-prev-thanks { margin-top: 10px; text-align: center; font-weight: 800; font-size: 10.5px; }
 @media (max-width: 560px) { .rc-pickers { grid-template-columns: 1fr; } }
 .rc-prev-brand { margin-top: 8px; text-align: center; font-size: 9.5px; font-weight: 700; color: var(--gold-dark-aa); }
+
+/* Responsive : un élément positionné dans un tableau (ex. en-tête
+   « sr-only ») reste dans le cadre qui défile au lieu d'élargir la page */
+.table-scroll, .db-table-scroll { position: relative; }
