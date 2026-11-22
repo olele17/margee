@@ -54,7 +54,12 @@ Deno.serve(async (req) => {
   if (!secret || !url || !serviceKey) return json(503, { error: 'not_configured' });
 
   const given = (req.headers.get('X-Secret-Key') || req.headers.get('x-secret-key') || '').trim();
-  if (!given || !sameSecret(given, secret)) return json(401, { error: 'unauthorized' });
+  if (!given || !sameSecret(given, secret)) {
+    // Diagnostic sans fuite : noms des en-têtes et longueurs seulement, jamais les valeurs
+    const names = [...req.headers.keys()].filter((h) => !['authorization', 'cookie'].includes(h)).join(',');
+    console.warn(`webhook refusé : x-secret-key ${given ? `reçu (${given.length} car.)` : 'absent'}, attendu ${secret.length} car. ; en-têtes : ${names}`);
+    return json(401, { error: 'unauthorized' });
+  }
 
   let payload: Record<string, unknown>;
   try { payload = await req.json(); } catch { return json(400, { error: 'invalid_json' }); }

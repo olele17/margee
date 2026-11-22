@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getPaymentStatus } from '../services/api';
+import { getPaymentStatus, verifyPayment } from '../services/api';
 import usePlans from '../hooks/usePlans';
 import AuthShell from '../components/AuthShell';
 
 const POLL_MS = 3000;
 const MAX_WAIT_MS = 90000;
+const VERIFY_EVERY = 3; // vérification auprès de Bictorys un tour sur trois
 
 /**
  * Retour de la page de paiement Bictorys (/abonnement/retour?ref=…).
- * Rien n'est activé ici : on attend que le webhook ait confirmé le
- * paiement côté serveur, en relisant le statut toutes les 3 secondes.
+ * Rien n'est activé par le navigateur : l'abonnement est activé côté
+ * serveur, soit par le webhook, soit par bictorys-verify (le serveur
+ * interroge lui-même Bictorys). La page relit le statut toutes les 3 s.
  */
 export default function PaymentReturn() {
   const { refresh } = useAuth();
@@ -28,8 +30,13 @@ export default function PaymentReturn() {
     if (!reference) return undefined;
     let alive = true;
     let timer;
+    let round = 0;
     const check = async () => {
       try {
+        // Le serveur demande à Bictorys (au 1er tour, puis un tour sur trois)
+        if (round % VERIFY_EVERY === 0) await verifyPayment(reference);
+        round += 1;
+        if (!alive) return;
         const p = await getPaymentStatus(reference);
         if (!alive) return;
         setPayment(p);

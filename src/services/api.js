@@ -381,6 +381,21 @@ export async function subscribe(accountId, planKey, billing = 'monthly') {
  * Statut d'un paiement de l'e-commerçant connecté (page de retour
  * Bictorys). La RLS ne laisse lire que ses propres paiements.
  */
+/**
+ * Demande au serveur de vérifier le paiement directement auprès de
+ * Bictorys (Edge Function bictorys-verify). Sert quand le webhook tarde
+ * ou échoue ; l'activation reste décidée côté serveur. Les erreurs sont
+ * ignorées : la page relit simplement le statut ensuite.
+ */
+export async function verifyPayment(reference) {
+  try {
+    const { data } = await requireSupabase().functions.invoke('bictorys-verify', { body: { reference } });
+    return data?.status || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getPaymentStatus(reference) {
   const { data, error } = await requireSupabase()
     .from('payments')
