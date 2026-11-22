@@ -1992,3 +1992,34 @@ td.bold {
   width: 36px; height: 36px; border-radius: 50%; border: none; flex-shrink: 0;
   background: rgba(255, 255, 255, 0.1); color: #ffffff; cursor: pointer; display: grid; place-items: center;
 }
+
+/* ── Paramètres : couleurs du reçu ───────────────────────────────── */
+.rc-themes { display: flex; flex-wrap: wrap; gap: 8px; }
+.rc-theme {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px 7px 8px; border-radius: 999px;
+  border: 1.5px solid var(--border-light); background: var(--bg-card);
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--dark-text); cursor: pointer;
+}
+.rc-theme:hover { border-color: var(--border-hover); }
+.rc-theme.is-on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.rc-theme:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.rc-theme--custom { cursor: default; color: var(--muted-text); }
+.rc-theme--custom.is-on { color: var(--dark-text); }
+.rc-swatch { display: inline-flex; border-radius: 999px; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.08); }
+.rc-swatch span { width: 14px; height: 18px; display: block; }
+.rc-pickers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.rc-picker {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--border-light); border-radius: 12px; cursor: pointer; font-size: 12.5px;
+}
+.rc-picker b { display: block; color: var(--dark-text); }
+.rc-picker input[type=color] { width: 38px; height: 38px; padding: 0; border: 0; border-radius: 10px; background: none; cursor: pointer; flex-shrink: 0; }
+.rc-picker input[type=color]:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.rc-hex { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--muted-text); }
+.rc-prev-client { margin-top: 10px; padding: 7px 10px; font-weight: 700; font-size: 11px; }
+.rc-prev-small { font-size: 8.5px; color: var(--muted-text); margin-right: 4px; }
+.rc-prev-head { display: flex; justify-content: space-between; margin-top: 10px; padding: 6px 10px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; }
+.rc-prev-row { display: flex; justify-content: space-between; padding: 7px 10px; font-size: 11px; border-bottom: 1px solid var(--border-light); }
+.rc-prev-thanks { margin-top: 10px; text-align: center; font-weight: 800; font-size: 10.5px; }
+@media (max-width: 560px) { .rc-pickers { grid-template-columns: 1fr; } }

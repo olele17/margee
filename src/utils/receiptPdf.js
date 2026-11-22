@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { fmt } from './calc';
 import { amountInWordsFcfa } from './numberToWords';
+import { getReceiptColors } from './receiptTheme';
 
 const FULL_MONTHS = [
   'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
@@ -13,13 +14,11 @@ function formatDateFr(dateStr) {
   return `${String(d).padStart(2, '0')} ${FULL_MONTHS[m - 1]} ${y}`;
 }
 
-// Palette Margee+
+// Couleurs fixes (texte, filets). Les couleurs de marque du reçu
+// (bandeau, total, teintes) viennent des réglages de l'e-commerçant :
+// voir receiptTheme.js (Margee+ noir et or par défaut).
 const INK = [20, 22, 28];          // #14161C
-const GOLD = [212, 160, 58];       // #D4A03A
-const GOLD_DARK = [148, 106, 18];  // #946A12
 const GRAY_TEXT = [91, 100, 114];  // #5B6472
-const LIGHT_BG = [249, 244, 234];  // #F9F4EA
-const NOTE_BG = [245, 236, 217];   // #F5ECD9
 const LINE = [233, 227, 214];      // #E9E3D6
 
 // Format d'image d'après l'en-tête du data URL (PNG, JPEG, WEBP)
@@ -49,6 +48,7 @@ const f = (n) => fmt(n).replace(/[   ]/g, ' ');
 
 export function downloadReceiptPdf(account, sale) {
   const rs = account.receiptSettings || {};
+  const C = getReceiptColors(rs).rgb;
   const contactEmail = rs.email || account.email;
   const doc = new jsPDF({ format: 'a5', unit: 'mm' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -99,7 +99,7 @@ export function downloadReceiptPdf(account, sale) {
 
   // ── Bloc client ──────────────────────────────────────────
   const clientBoxH = sale.clientAddress || sale.clientPhone ? 20 : 15;
-  doc.setFillColor(...LIGHT_BG);
+  doc.setFillColor(...C.tint);
   doc.rect(marginX, y, rightX - marginX, clientBoxH, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
@@ -119,11 +119,11 @@ export function downloadReceiptPdf(account, sale) {
   y += clientBoxH + 10;
 
   // ── Table description / montant ─────────────────────────
-  doc.setFillColor(...INK);
+  doc.setFillColor(...C.primary);
   doc.rect(marginX, y, rightX - marginX, 8, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...C.onPrimary);
   doc.text('DESCRIPTION', marginX + 4, y + 5.5);
   doc.text('MONTANT (FCFA)', rightX - 4, y + 5.5, { align: 'right' });
   y += 8;
@@ -150,11 +150,11 @@ export function downloadReceiptPdf(account, sale) {
   // ── Total payé ───────────────────────────────────────────
   const total = rows.reduce((a, r) => a + r.amount, 0);
   y += 8;
-  doc.setFillColor(...GOLD);
+  doc.setFillColor(...C.accent);
   doc.rect(marginX, y - 6, rightX - marginX, 10, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(...INK);
+  doc.setTextColor(...C.onAccent);
   doc.text('TOTAL PAYÉ :', marginX + 4, y + 1);
   doc.text(f(total), rightX - 4, y + 1, { align: 'right' });
   y += 12;
@@ -174,7 +174,7 @@ export function downloadReceiptPdf(account, sale) {
   if (rs.note) {
     const noteLines = doc.splitTextToSize(rs.note, rightX - marginX - 8);
     const noteBoxH = 8 + noteLines.length * 4.2;
-    doc.setFillColor(...NOTE_BG);
+    doc.setFillColor(...C.noteBg);
     doc.rect(marginX, y, rightX - marginX, noteBoxH, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
@@ -192,7 +192,7 @@ export function downloadReceiptPdf(account, sale) {
   // ── Merci ──────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(...GOLD_DARK);
+  doc.setTextColor(...C.thanks);
   doc.text('MERCI POUR VOTRE CONFIANCE !', pageW / 2, y, { align: 'center' });
   y += 12;
 

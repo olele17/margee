@@ -89,6 +89,8 @@ function mapAccount(profile, sub) {
       email: profile.receipt_email || '',
       signatureType: profile.receipt_signature_type || 'draw',
       signatureImage: profile.receipt_signature || null,
+      colorPrimary: profile.receipt_color_primary || null,
+      colorAccent: profile.receipt_color_accent || null,
     },
   };
 }
@@ -214,6 +216,8 @@ const RECEIPT_COLUMNS = {
   email: 'receipt_email',
   signatureType: 'receipt_signature_type',
   signatureImage: 'receipt_signature',
+  colorPrimary: 'receipt_color_primary',
+  colorAccent: 'receipt_color_accent',
 };
 
 export async function updateReceiptSettings(accountId, settings) {

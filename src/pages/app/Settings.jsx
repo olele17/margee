@@ -5,6 +5,7 @@ import * as api from '../../services/api';
 import { annualPrice } from '../../services/api';
 import usePlans from '../../hooks/usePlans';
 import { getPlanOffer } from '../../utils/planOffer';
+import { RECEIPT_THEMES, DEFAULT_RECEIPT_COLORS, getReceiptColors, isHexColor, matchTheme } from '../../utils/receiptTheme';
 import { fmt } from '../../utils/calc';
 import SignaturePad from '../../components/SignaturePad';
 
@@ -36,6 +37,9 @@ export default function Settings() {
   const [note, setNote] = useState('');
   const [signatureType, setSignatureType] = useState('draw');
   const [signatureImage, setSignatureImage] = useState(null);
+  // Couleurs du reçu (bandeau du tableau + bande « Total payé »)
+  const [colorPrimary, setColorPrimary] = useState(DEFAULT_RECEIPT_COLORS.primary);
+  const [colorAccent, setColorAccent] = useState(DEFAULT_RECEIPT_COLORS.accent);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -54,6 +58,8 @@ export default function Settings() {
     setNote(rs.note || '');
     setSignatureType(rs.signatureType || 'draw');
     setSignatureImage(rs.signatureImage || null);
+    setColorPrimary(isHexColor(rs.colorPrimary) ? rs.colorPrimary : DEFAULT_RECEIPT_COLORS.primary);
+    setColorAccent(isHexColor(rs.colorAccent) ? rs.colorAccent : DEFAULT_RECEIPT_COLORS.accent);
   }, [account]);
 
   if (!account) return null;
@@ -61,6 +67,8 @@ export default function Settings() {
   const plan = sub.plan ? catalog.all[sub.plan] : null;
   const offer = getPlanOffer(account, catalog);
   const yearly = sub.billing === 'yearly';
+  const themeId = matchTheme(colorPrimary, colorAccent);
+  const colors = getReceiptColors({ colorPrimary, colorAccent }).hex;
 
   const readImage = async (e, setter) => {
     const file = e.target.files?.[0];
@@ -86,6 +94,9 @@ export default function Settings() {
       await api.updateReceiptSettings(account.id, {
         logo, address, city, note, signatureType, signatureImage,
         email: contactEmail.trim(),
+        // Couleurs Margee+ : on enregistre « par défaut » (null)
+        colorPrimary: themeId === 'margee' ? null : colorPrimary.toUpperCase(),
+        colorAccent: themeId === 'margee' ? null : colorAccent.toUpperCase(),
       });
       await refresh();
       setSaved(true);
@@ -178,6 +189,61 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* ── Couleurs du reçu ───────────────────────────────── */}
+          <div className="card" style={{ marginBottom: 18 }}>
+            <div className="form-card-title" style={{ marginBottom: 6 }}>
+              <i className="ti ti-palette" /> Couleurs du reçu
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted-text)', marginBottom: 12 }}>
+              Choisis un thème ou tes propres couleurs : l'aperçu à droite et tes reçus PDF changent tout de suite.
+            </div>
+            <div className="rc-themes" role="radiogroup" aria-label="Thème de couleurs du reçu">
+              {RECEIPT_THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={themeId === t.id}
+                  className={`rc-theme${themeId === t.id ? ' is-on' : ''}`}
+                  onClick={() => { setColorPrimary(t.primary); setColorAccent(t.accent); }}
+                >
+                  <span className="rc-swatch" aria-hidden="true">
+                    <span style={{ background: t.primary }} />
+                    <span style={{ background: t.accent }} />
+                  </span>
+                  {t.label}
+                </button>
+              ))}
+              <span className={`rc-theme rc-theme--custom${themeId === 'custom' ? ' is-on' : ''}`} aria-hidden={themeId !== 'custom'}>
+                <i className="ti ti-adjustments-horizontal" aria-hidden="true" /> Personnalisé
+              </span>
+            </div>
+            <div className="rc-pickers">
+              <label className="rc-picker" htmlFor="rc-primary">
+                <input id="rc-primary" type="color" value={colorPrimary} onChange={(e) => setColorPrimary(e.target.value)} />
+                <span>
+                  <b>Bandeau du tableau</b>
+                  <span className="rc-hex">{colorPrimary.toUpperCase()}</span>
+                </span>
+              </label>
+              <label className="rc-picker" htmlFor="rc-accent">
+                <input id="rc-accent" type="color" value={colorAccent} onChange={(e) => setColorAccent(e.target.value)} />
+                <span>
+                  <b>Total payé et « Merci »</b>
+                  <span className="rc-hex">{colorAccent.toUpperCase()}</span>
+                </span>
+              </label>
+            </div>
+            {themeId !== 'margee' && (
+              <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={() => { setColorPrimary(DEFAULT_RECEIPT_COLORS.primary); setColorAccent(DEFAULT_RECEIPT_COLORS.accent); }}>
+                <i className="ti ti-arrow-back-up" aria-hidden="true" /> Revenir aux couleurs Margee+
+              </button>
+            )}
+            <div style={{ fontSize: 11.5, color: 'var(--muted-text)', marginTop: 8 }}>
+              Le texte passe automatiquement en blanc ou en noir pour rester lisible. Pense à enregistrer.
+            </div>
+          </div>
+
           {/* ── Signature ──────────────────────────────────────── */}
           <div className="card" style={{ marginBottom: 18 }}>
             <div className="form-card-title" style={{ marginBottom: 12 }}>
@@ -248,8 +314,16 @@ export default function Settings() {
               {address && <div className="receipt-preview-muted">{address}</div>}
               {phone && <div className="receipt-preview-muted">Tél : {phone}</div>}
               {contactEmail && <div className="receipt-preview-muted">Email : {contactEmail}</div>}
-              <div className="receipt-preview-bar"><span>TOTAL PAYÉ</span><span>18 500 Fr</span></div>
-              {note && <div className="receipt-preview-note">{note}</div>}
+              <div className="rc-prev-client" style={{ background: colors.tint }}>
+                <span className="rc-prev-small">REÇU DE :</span> Client exemple
+              </div>
+              <div className="rc-prev-head" style={{ background: colors.primary, color: colors.onPrimary }}>
+                <span>DESCRIPTION</span><span>MONTANT</span>
+              </div>
+              <div className="rc-prev-row"><span>Sac à main × 1</span><b>18 500</b></div>
+              <div className="receipt-preview-bar" style={{ background: colors.accent, color: colors.onAccent }}><span>TOTAL PAYÉ</span><span>18 500 Fr</span></div>
+              {note && <div className="receipt-preview-note" style={{ background: colors.noteBg }}>{note}</div>}
+              <div className="rc-prev-thanks" style={{ color: colors.thanks }}>MERCI POUR VOTRE CONFIANCE !</div>
               <div className="receipt-preview-muted" style={{ marginTop: 10 }}>
                 Fait à {city || '—'}
               </div>
