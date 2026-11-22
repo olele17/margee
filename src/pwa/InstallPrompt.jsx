@@ -62,9 +62,10 @@ export default function InstallPrompt() {
   const onLater = () => { later(); close(); };
   const onInstall = async () => {
     if (platform === 'native') {
-      const outcome = await install();
-      if (outcome === 'unavailable') { setGuide(true); return; }
+      // La fenêtre d'installation de Chrome s'ouvre : la carte se ferme tout de suite
       close();
+      const outcome = await install();
+      if (outcome === 'unavailable') setGuide(true);
       return;
     }
     setGuide(true);
