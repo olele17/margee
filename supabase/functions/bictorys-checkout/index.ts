@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
   const url = Deno.env.get('SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !serviceKey) return fail(500, 'Configuration serveur manquante.');
-  const apiKey = Deno.env.get('BICTORYS_SECRET_KEY');
+  const apiKey = Deno.env.get('BICTORYS_SECRET_KEY')?.trim();
   if (!apiKey) return fail(503, 'Le paiement en ligne n\'est pas encore configuré. Réessaie plus tard.');
   const apiUrl = (Deno.env.get('BICTORYS_API_URL') || 'https://api.test.bictorys.com').replace(/\/+$/, '');
   const country = (Deno.env.get('BICTORYS_COUNTRY') || 'SN').toUpperCase();

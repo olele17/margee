@@ -47,12 +47,13 @@ const pick = (o: Record<string, unknown>, ...keys: string[]) => {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method' });
 
-  const secret = Deno.env.get('BICTORYS_WEBHOOK_SECRET');
+  // trim : un espace ou un retour à la ligne collé avec le secret ne bloque pas tout
+  const secret = Deno.env.get('BICTORYS_WEBHOOK_SECRET')?.trim();
   const url = Deno.env.get('SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!secret || !url || !serviceKey) return json(503, { error: 'not_configured' });
 
-  const given = req.headers.get('X-Secret-Key') || req.headers.get('x-secret-key') || '';
+  const given = (req.headers.get('X-Secret-Key') || req.headers.get('x-secret-key') || '').trim();
   if (!given || !sameSecret(given, secret)) return json(401, { error: 'unauthorized' });
 
   let payload: Record<string, unknown>;
