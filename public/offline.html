@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1B1D21" />
+  <title>Hors connexion · Margee+</title>
+  <link rel="icon" type="image/png" href="/icons/favicon-32.png" />
+  <style>
+    /* Page autonome : affichée par le service worker sans réseau
+       (aucune police, aucun script ni style externe). */
+    :root { --ink: #14161C; --header: #1B1D21; --gold: #D4A03A; --cream: #FAF7F0; --muted: #5B6472; --border: #E9E3D6; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+      background: var(--cream);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      text-align: center;
+    }
+    .card { width: min(420px, 100%); background: #fff; border: 1px solid var(--border); border-radius: 24px; padding: 32px 24px; box-shadow: 0 10px 30px rgba(20, 22, 28, .06); }
+    .logo { width: 64px; height: 64px; margin: 0 auto 18px; display: block; }
+    .icon { width: 52px; height: 52px; margin: 0 auto 14px; border-radius: 50%; background: var(--header); display: grid; place-items: center; }
+    .icon svg { width: 26px; height: 26px; stroke: var(--gold); }
+    h1 { margin: 0 0 10px; font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+    p { margin: 0 0 24px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+    button {
+      width: 100%; min-height: 48px; border: 0; border-radius: 999px; cursor: pointer;
+      background: var(--gold); color: var(--ink); font: inherit; font-size: 16px; font-weight: 700;
+    }
+    button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+    .hint { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <svg class="logo" viewBox="0 0 64 64" role="img" aria-label="Margee+">
+      <rect width="64" height="64" rx="15" fill="#0F1115"/>
+      <path d="M16 47V21l14 14 15-15" fill="none" stroke="#D4A03A" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M37 18h11v11" fill="none" stroke="#D4A03A" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M46 34v13" fill="none" stroke="#FAF7F0" stroke-width="6.5" stroke-linecap="round"/>
+    </svg>
+    <div class="icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 18h.01"/><path d="M9.17 15.17a4 4 0 0 1 5.66 0"/><path d="M6.34 12.34a8 8 0 0 1 4.15-2.2"/><path d="M3.51 9.51a12 12 0 0 1 4.65-2.9"/><path d="M3 3l18 18"/>
+      </svg>
+    </div>
+    <h1>Pas de connexion internet</h1>
+    <p>Tes données sont en sécurité, reconnecte-toi pour continuer.</p>
+    <button type="button" id="retry">Réessayer</button>
+    <p class="hint" id="hint" aria-live="polite"></p>
+  </main>
+  <script>
+    // Réessaie la page demandée ; revient tout seul quand le réseau revient.
+    var hint = document.getElementById('hint');
+    function retry() {
+      if (!navigator.onLine) { hint.textContent = 'Toujours hors ligne : vérifie le Wi-Fi ou les données mobiles.'; return; }
+      location.reload();
+    }
+    document.getElementById('retry').addEventListener('click', retry);
+    window.addEventListener('online', function () { location.reload(); });
+  </script>
+</body>
+</html>

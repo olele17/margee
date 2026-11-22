@@ -32,6 +32,7 @@ import Settings from './pages/app/Settings';
 import Notes from './pages/app/Notes';
 import Documents from './pages/app/Documents';
 import DocumentEditor from './pages/app/DocumentEditor';
+import UpdatePrompt from './pwa/UpdatePrompt';
 import Challenges from './pages/app/Challenges';
 
 export default function App() {
@@ -106,6 +107,8 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {/* Application installable : mise à jour proposée à chaque déploiement */}
+        <UpdatePrompt />
       </AuthProvider>
     </BrowserRouter>
   );

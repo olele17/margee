@@ -24,6 +24,17 @@ export default function Sales() {
     setQ(searchParams.get('q') || '');
   }, [searchParams]);
 
+  // Raccourci de l'app installée « Ajouter une vente » (?nouvelle=1) :
+  // ouvre directement le formulaire, puis nettoie l'adresse.
+  useEffect(() => {
+    if (searchParams.get('nouvelle') !== '1') return;
+    setOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('nouvelle');
+    next.delete('source');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const product = products.find((p) => p.id === form.productId);
   const previewProfit = product
     ? Number(form.qty || 0) * (product.price - product.costPrice) - (form.deliveryPaidByClient ? 0 : Number(form.deliveryCost || 0))

@@ -1,0 +1,33 @@
+/* ── Application installable : bandeau de mise à jour ────────────── */
+.pwa-update {
+  position: fixed;
+  left: 50%;
+  top: calc(12px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: min(560px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 16px;
+  background: var(--ink, #14161C);
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(15, 17, 21, 0.35);
+  animation: pwa-in 0.2s ease;
+}
+@keyframes pwa-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .pwa-update { animation: none; } }
+.pwa-update-icon { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); display: inline-flex; align-items: center; justify-content: center; color: var(--gold, #D4A03A); font-size: 19px; flex-shrink: 0; }
+.pwa-update-text { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 13px; }
+.pwa-update-text span { color: #D9D5CC; font-size: 12.5px; }
+.pwa-update-later, .pwa-update-btn { min-height: 44px; border-radius: 999px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+.pwa-update-later { padding: 0 12px; border: 0; background: transparent; color: #D9D5CC; }
+.pwa-update-btn { padding: 0 16px; border: 0; background: var(--gold, #D4A03A); color: var(--ink, #14161C); }
+.pwa-update-btn:disabled { opacity: 0.7; cursor: default; }
+.pwa-update-later:focus-visible, .pwa-update-btn:focus-visible { outline: 3px solid var(--gold, #D4A03A); outline-offset: 2px; }
+@media (max-width: 520px) {
+  .pwa-update { flex-wrap: wrap; }
+  .pwa-update-text { flex-basis: calc(100% - 48px); }
+  .pwa-update-later, .pwa-update-btn { flex: 1; }
+}
