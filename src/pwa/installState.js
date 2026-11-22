@@ -106,8 +106,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     safeSet(INSTALLED_KEY, '1');   // plus aucune proposition dans ce navigateur
+    safeSet('margee.pwa.pendingInstall', deviceKind()); // statistique (recordInstall.js)
     installedHandlers.forEach((fn) => { try { fn(deviceKind()); } catch { /* ignoré */ } });
     emit();
   });
-  window.matchMedia?.('(display-mode: standalone)').addEventListener?.('change', emit);
+  // Classe « is-standalone » sur <html> : styles du mode installé
+  // (encoche, barre de navigation du bas). Rien ne change dans un navigateur.
+  const markMode = () => document.documentElement.classList.toggle('is-standalone', isStandalone());
+  markMode();
+  window.matchMedia?.('(display-mode: standalone)').addEventListener?.('change', () => { markMode(); emit(); });
 }

@@ -144,3 +144,132 @@
 .sidebar-install { width: 100%; background: transparent; border: none; cursor: pointer; text-align: left; font: inherit; }
 .settings-install { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .settings-install-text { flex: 1; min-width: 200px; font-size: 13px; color: var(--muted-text, #6B6E76); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════════════
+   MODE INSTALLÉ (html.is-standalone) — rien ne change dans un navigateur
+   ══════════════════════════════════════════════════════════════ */
+/* Encoche / barre d'état : bande sombre fixe, contenu décalé dessous */
+html.is-standalone body {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overflow-x: clip;
+}
+html.is-standalone body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  background: var(--header, #1B1D21);
+  z-index: 1000;
+  pointer-events: none;
+}
+html.is-standalone .topbar,
+html.is-standalone .lp-header { top: env(safe-area-inset-top); }
+@media (max-width: 840px) {
+  html.is-standalone .sidebar {
+    padding-top: calc(20px + env(safe-area-inset-top));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    height: 100dvh;
+    overflow-y: auto;
+  }
+}
+
+/* Barre de navigation du bas (mobile, mode installé uniquement) */
+.tabbar { display: none; }
+@media (max-width: 840px) {
+  html.is-standalone .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 95; /* sous le menu latéral (99-100) */
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: end;
+    padding: 6px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    background: var(--header, #1B1D21);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  html.is-standalone .main-area { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  html.is-standalone .sc-fab { bottom: calc(82px + env(safe-area-inset-bottom)); }
+  html.is-standalone .sc-panel {
+    bottom: calc(140px + env(safe-area-inset-bottom));
+    height: calc(100dvh - 156px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  html.is-standalone .app-toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
+.tabbar-item {
+  min-height: 52px;
+  min-width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #B8B2A6;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tabbar-item i { font-size: 22px; }
+.tabbar-item.active { color: var(--gold, #D4A03A); }
+.tabbar-add {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tabbar-add-circle {
+  width: 56px;
+  height: 56px;
+  margin-top: -24px;
+  border-radius: 50%;
+  border: 4px solid var(--header, #1B1D21);
+  background: var(--gold, #D4A03A);
+  color: var(--ink, #14161C);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 8px 20px rgba(212, 160, 58, 0.35);
+}
+.tabbar-item:focus-visible, .tabbar-add:focus-visible { outline: 3px solid var(--gold, #D4A03A); outline-offset: -3px; }
+
+/* Pas de zoom involontaire sur iPhone : champs en 16 px minimum sur mobile */
+@media (max-width: 840px), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea { font-size: 16px !important; }
+}
+
+/* Mobile : zones tactiles d'au moins 44 px (prioritaire sur les tailles
+   compactes des pages, d'où !important) */
+@media (max-width: 840px) {
+  .btn,
+  select,
+  .nc-chip,
+  .nc-tab,
+  .db-tabs button,
+  .doc-tabs button,
+  .doc-chip,
+  .rc-theme { min-height: 44px !important; }
+  .topbar-menu-btn,
+  .topbar-icon-btn,
+  .nc-pin { min-width: 44px !important; min-height: 44px !important; }
+  .btn:has(> i:only-child) { min-width: 44px !important; }
+  input[type="color"] { min-width: 44px !important; min-height: 44px !important; }
+}

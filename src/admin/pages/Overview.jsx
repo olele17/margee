@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getOverview } from '../adminApi';
+import { getOverview, getAppInstallStats } from '../adminApi';
 import { fcfa, num, dateFr, dateTimeFr, dayShort, daysUntil, PLAN_LABELS } from '../format';
 import { SubscriptionBadge, PaymentBadge } from '../components/StatusBadge';
 import '../../styles/dashboard.css';
@@ -62,8 +62,36 @@ function PlanSplit({ byPlan }) {
   );
 }
 
+function AppInstalls({ stats }) {
+  const rows = [['android', 'Android', 'ti-brand-android'], ['ios', 'iPhone', 'ti-brand-apple'], ['desktop', 'Ordinateur', 'ti-device-desktop']]
+    .map(([k, l, icon]) => ({ key: k, label: l, icon, n: Number(stats?.[k] || 0) }));
+  const total = Number(stats?.total || 0);
+  return (
+    <section className="db-card" aria-labelledby="adm-installs-title">
+      <div className="db-card-head">
+        <div>
+          <h2 id="adm-installs-title" className="db-card-title">Applis installées</h2>
+          <div className="db-card-sub">
+            {stats ? `${num(total)} installation${total > 1 ? 's' : ''} · ${num(stats.accounts)} compte${Number(stats.accounts) > 1 ? 's' : ''} · ${num(stats.last_30_days)} sur 30 jours` : 'Chargement…'}
+          </div>
+        </div>
+      </div>
+      <ul className="adm-split">
+        {rows.map((r) => (
+          <li key={r.key}>
+            <div className="adm-split-head"><span><i className={`ti ${r.icon}`} aria-hidden="true" /> {r.label}</span><strong>{num(r.n)}</strong></div>
+            <div className="nc-bar"><div className="nc-bar-fill adm-split-pro" style={{ width: `${total ? (r.n / total) * 100 : 0}%` }} /></div>
+          </li>
+        ))}
+      </ul>
+      <p className="adm-note">Une installation par compte et par type d'appareil.</p>
+    </section>
+  );
+}
+
 export default function Overview() {
   const [data, setData] = useState(null);
+  const [installs, setInstalls] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +99,9 @@ export default function Overview() {
     setLoading(true);
     setErr('');
     try {
-      setData(await getOverview());
+      const [overview, installs] = await Promise.all([getOverview(), getAppInstallStats().catch(() => null)]);
+      setData(overview);
+      setInstalls(installs);
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -131,6 +161,10 @@ export default function Overview() {
           <div className="adm-grid-2">
             <SignupsChart days={data.signups_30_days || []} />
             <PlanSplit byPlan={data.by_plan} />
+          </div>
+
+          <div className="adm-grid-2">
+            <AppInstalls stats={installs} />
           </div>
 
           <section className="db-card db-recent" aria-labelledby="adm-exp-title">

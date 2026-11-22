@@ -58,6 +58,13 @@ export async function getOverview() {
   return data;
 }
 
+// Applis installées (admin_app_install_stats) : totaux uniquement
+export async function getAppInstallStats() {
+  const { data, error } = await sb().rpc('admin_app_install_stats');
+  if (error) throw adminError(error, 'Impossible de charger les installations.');
+  return data;
+}
+
 // ── E-COMMERÇANTS ────────────────────────────────────────────────
 // Liste paginée côté serveur (admin_list_merchants). Les comptes admins
 // sont exclus par la base.

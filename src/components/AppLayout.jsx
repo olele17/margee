@@ -3,6 +3,8 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import SupportChat from './SupportChat';
 import InstallPrompt from '../pwa/InstallPrompt';
+import MobileTabBar, { scrollToTop } from '../pwa/MobileTabBar';
+import { watchInstall } from '../pwa/recordInstall';
 import { useAuth } from '../context/AuthContext';
 import useBusinessData from '../hooks/useBusinessData';
 import { generateInsights, generateActivity } from '../utils/insights';
@@ -49,6 +51,16 @@ export default function AppLayout() {
     return () => { window.removeEventListener('unhandledrejection', onRejection); clearTimeout(timer); };
   }, []);
   const panelRef = useRef(null);
+
+  // Statistique : application installée (une fois par compte et appareil)
+  useEffect(() => (account?.id ? watchInstall(account.id) : undefined), [account?.id]);
+
+  // Changement de page : retour fluide en haut
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    scrollToTop();
+  }, [location.pathname]);
 
   const ownerName = account?.ownerName || account?.businessName || 'Mon compte';
   const ownerEmail = account?.email || '';
@@ -203,6 +215,8 @@ export default function AppLayout() {
       <SupportChat />
       {/* Proposition d'installer l'application (20 s ou première vente) */}
       <InstallPrompt />
+      {/* Application installée sur mobile : barre de navigation du bas */}
+      <MobileTabBar onMenu={() => setMobileMenuOpen(true)} />
     </div>
   );
 }
