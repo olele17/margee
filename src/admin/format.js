@@ -50,6 +50,8 @@ export const ACTION_LABELS = {
   'merchant.extend_subscription': 'Abonnement prolongé',
   'merchant.reset_password': 'Email de réinitialisation envoyé',
   'merchant.delete': 'Compte supprimé',
+  'payment.manual_activate': 'Paiement activé manuellement',
+  'subscription.from_payment': 'Abonnement activé par un paiement',
   'admin_notes.insert': 'Note interne ajoutée',
   'admin_notes.update': 'Note interne modifiée',
   'admin_notes.delete': 'Note interne supprimée',
@@ -64,4 +66,11 @@ export const ACTION_LABELS = {
   'admins.update': 'Rôle admin modifié',
   'admins.delete': 'Admin retiré',
 };
+/** Moyens de paiement Bictorys */
+export const PAYMENT_METHODS = {
+  wave_money: 'Wave', orange_money: 'Orange Money', free_money: 'Free Money', maxit: 'Maxit',
+  card: 'Carte bancaire', mtn_money: 'MTN Money', moov_money: 'Moov Money',
+};
+export const methodLabel = (m) => (m ? PAYMENT_METHODS[m] || m : '—');
+
 export const actionLabel = (a) => ACTION_LABELS[a] || a;

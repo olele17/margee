@@ -295,8 +295,33 @@ export async function subscribe(accountId, planKey, billing = 'monthly') {
     if (error) throw toError(error, "Impossible d'activer le plan Free. Réessaie.");
     return fetchAccount(accountId);
   }
-  // Remplacé à l'étape 6 par : Edge Function create-checkout → redirection Bictorys
-  throw new Error('Le paiement en ligne (Wave, Orange Money, carte) arrive très bientôt. En attendant, choisis le plan Free.');
+  // Pro / Elite : l'Edge Function crée le paiement (montant calculé par la
+  // base) puis la charge Bictorys, et renvoie le lien de la page de paiement.
+  const { data, error } = await requireSupabase().functions.invoke('bictorys-checkout', {
+    body: { plan: planKey, billing, origin: window.location.origin },
+  });
+  if (error) {
+    let msg = '';
+    try { msg = (await error.context?.json?.())?.error || ''; } catch { /* réponse illisible */ }
+    if (!msg && isNetworkError(error)) msg = 'Connexion impossible, réessaie.';
+    throw new Error(msg || 'Impossible de démarrer le paiement. Réessaie.');
+  }
+  if (!data?.url || !/^https:\/\//.test(data.url)) throw new Error('Impossible de démarrer le paiement. Réessaie.');
+  return { redirectUrl: data.url, reference: data.reference };
+}
+
+/**
+ * Statut d'un paiement de l'e-commerçant connecté (page de retour
+ * Bictorys). La RLS ne laisse lire que ses propres paiements.
+ */
+export async function getPaymentStatus(reference) {
+  const { data, error } = await requireSupabase()
+    .from('payments')
+    .select('status, plan_id, billing, amount')
+    .eq('provider_ref', reference)
+    .maybeSingle();
+  if (error) throw toError(error, 'Impossible de vérifier le paiement.');
+  return data;
 }
 
 export function isSubscriptionActive(account) {

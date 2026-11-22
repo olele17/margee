@@ -267,3 +267,8 @@
   line-height: 1.5;
 }
 .au-info i { font-size: 24px; color: var(--au-gold-dark); flex-shrink: 0; }
+
+/* Page de retour du paiement : icône de chargement */
+.au-spin { display: inline-block; animation: au-spin 1s linear infinite; }
+@keyframes au-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .au-spin { animation: none; } }

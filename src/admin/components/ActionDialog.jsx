@@ -26,6 +26,10 @@ export default function ActionDialog({
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Dernière version de onCancel, sans relancer l'initialisation (qui
+  // effacerait le motif) quand la page parente se redessine.
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +39,7 @@ export default function ActionDialog({
     const previous = document.activeElement;
     setTimeout(() => (dialogRef.current?.querySelector('[data-autofocus]') || reasonRef.current)?.focus(), 0);
     const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancelRef.current(); }
       else if (e.key === 'Tab') {
         const els = dialogRef.current?.querySelectorAll('button:not([disabled]), input, select, textarea');
         if (!els?.length) return;
@@ -53,7 +57,7 @@ export default function ActionDialog({
       document.body.style.overflow = prevOverflow;
       if (previous && typeof previous.focus === 'function') previous.focus();
     };
-  }, [open, onCancel]);
+  }, [open]);
 
   if (!open) return null;
   const reasonOk = reason.trim().length >= 3;

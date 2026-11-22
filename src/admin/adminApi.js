@@ -158,3 +158,41 @@ export function sendPasswordReset(accountId, reason) {
 export function deleteMerchant(accountId, reason, confirmName) {
   return callAdminActions({ action: 'delete_account', account_id: accountId, reason, confirm_name: confirmName }, 'Suppression impossible. Réessaie.');
 }
+
+// ── PAIEMENTS ────────────────────────────────────────────────────
+// Liste paginée côté serveur (admin_list_payments, tout admin) avec le
+// total encaissé de la période. Dates au format AAAA-MM-JJ.
+export async function listPayments({ from = '', to = '', status = '', search = '', page = 1, pageSize = 25 } = {}) {
+  const { data, error } = await sb().rpc('admin_list_payments', {
+    p_from: from || null,
+    p_to: to || null,
+    p_status: status || null,
+    p_search: search || null,
+    p_page: page,
+    p_page_size: pageSize,
+  });
+  if (error) throw adminError(error, 'Impossible de charger les paiements.');
+  return data;
+}
+
+/** Tous les paiements correspondant aux filtres (export CSV), par pages de 1 000. */
+export async function listAllPayments(filters) {
+  const all = [];
+  for (let page = 1; page <= 100; page++) {
+    const res = await listPayments({ ...filters, page, pageSize: 1000 });
+    all.push(...res.rows);
+    if (all.length >= Number(res.total) || res.rows.length === 0) break;
+  }
+  return all;
+}
+
+/**
+ * Activation manuelle (super_admin) d'un paiement réellement reçu chez
+ * Bictorys dont la notification a échoué : référence Bictorys et motif
+ * obligatoires, inscrite au journal par la base.
+ */
+export async function activatePayment(paymentId, bictorysRef, reason) {
+  const { data, error } = await sb().rpc('admin_activate_payment', { p_payment_id: paymentId, p_bictorys_ref: bictorysRef, p_reason: reason });
+  if (error) throw adminError(error);
+  return data;
+}

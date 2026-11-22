@@ -24,18 +24,20 @@ export default function Subscribe() {
     setErr('');
     setLoading(true);
     try {
-      // TODO BACKEND : remplacer ce subscribe() par un appel qui crée
-      // une session de paiement Bictorys côté backend, puis redirige
-      // vers l'URL de checkout retournée. L'activation réelle du compte
-      // doit se faire via le webhook Bictorys, pas ici.
-      await subscribe(account.id, plan, billing);
+      // Free : activé tout de suite. Pro / Elite : redirection vers la
+      // page de paiement Bictorys ; l'abonnement est activé par le
+      // webhook côté serveur, puis constaté sur /abonnement/retour.
+      const res = await subscribe(account.id, plan, billing);
+      if (res?.redirectUrl) {
+        window.location.assign(res.redirectUrl);
+        return; // le bouton reste en « Redirection… » jusqu'au départ
+      }
       await refresh();
       navigate('/app/dashboard');
     } catch (e) {
       setErr(e.message);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const billingOptions = [
@@ -118,7 +120,7 @@ export default function Subscribe() {
           {err && <div className="au-err" role="alert" style={{ marginTop: 18 }}>{err}</div>}
           <button className="au-btn au-btn--gold" style={{ marginTop: 22 }} onClick={pay} disabled={loading}>
             {loading
-              ? 'Activation…'
+              ? (paid ? 'Redirection vers Bictorys…' : 'Activation…')
               : paid
                 ? `Payer ${fmt(billing === 'yearly' ? annualPrice(selected) : selected.price)} avec Bictorys →`
                 : 'Commencer gratuitement →'}

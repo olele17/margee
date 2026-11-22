@@ -180,7 +180,7 @@
 }
 .adm-input-icon { position: relative; }
 .adm-input-icon i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-text); font-size: 17px; pointer-events: none; }
-.adm-input-icon input { padding-left: 38px; }
+.adm-input-icon input, .field .adm-input-icon input { padding-left: 38px; }
 .adm-filter-reset { min-height: 42px; }
 
 /* Tableau dense, triable, lignes cliquables */
@@ -266,3 +266,7 @@
 @media (max-width: 420px) {
   .adm-stats--4 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── Étape 4 : paiements ─────────────────────────────────────────── */
+.adm-table .db-num { text-align: right; }
+.adm-table .adm-mono { font-size: 12px; word-break: break-all; }
