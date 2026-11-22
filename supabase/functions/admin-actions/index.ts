@@ -5,6 +5,8 @@
 //   delete_account  (super_admin) : supprime le compte et toutes ses
 //                                   données ; les paiements sont gardés
 //                                   mais anonymisés (account_id → null)
+//   invite_admin    (super_admin) : invite un membre de l'équipe (email
+//                                   envoyé par Supabase, ou lien à partager)
 //
 // La clé service_role vient de l'environnement Supabase
 // (SUPABASE_SERVICE_ROLE_KEY) : elle n'est jamais envoyée au navigateur.
@@ -42,19 +44,92 @@ Deno.serve(async (req) => {
   const caller = userData?.user;
   if (userErr || !caller) return fail(401, 'Session expirée : reconnecte-toi.');
 
-  const { data: adminRow } = await db.from('admins').select('role').eq('user_id', caller.id).maybeSingle();
-  if (!adminRow) return fail(403, 'Accès réservé aux administrateurs.');
+  const { data: adminRow } = await db.from('admins').select('role, disabled_at').eq('user_id', caller.id).maybeSingle();
+  if (!adminRow || adminRow.disabled_at) return fail(403, 'Accès réservé aux administrateurs.');
   if (adminRow.role !== 'super_admin') return fail(403, 'Action réservée au super admin.');
 
   // ── Paramètres ──────────────────────────────────────────────────
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return fail(400, 'Requête invalide.'); }
   const action = String(body.action || '');
-  const accountId = String(body.account_id || '');
   const reason = String(body.reason || '').trim();
-  if (!UUID.test(accountId)) return fail(400, 'Compte invalide.');
   if (reason.length < 3) return fail(400, 'Motif obligatoire : explique en quelques mots pourquoi (3 caractères minimum).');
   if (reason.length > 500) return fail(400, 'Motif trop long (500 caractères maximum).');
+
+  // ── Invitation d'un membre de l'équipe ──────────────────────────
+  // mode « email » : Supabase envoie l'invitation ;
+  // mode « link »  : le lien est renvoyé au super admin, qui le transmet
+  //                  lui-même (utile tant que l'envoi d'emails est limité).
+  // L'email est d'abord inscrit dans admin_invitations : le compte passe
+  // même quand les inscriptions sont fermées. Un email déjà utilisé par un e-commerçant
+  // est refusé (les comptes de l'équipe restent séparés).
+  if (action === 'invite_admin') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const role = String(body.role || '');
+    const mode = body.mode === 'link' ? 'link' : 'email';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return fail(400, 'Adresse email invalide.');
+    if (role !== 'super_admin' && role !== 'support') return fail(400, 'Rôle invalide.');
+    const redirectTo = typeof body.redirect_to === 'string' && /^https?:\/\/[^\s]+\/reinitialiser-mot-de-passe\?invitation=1$/.test(body.redirect_to)
+      ? body.redirect_to : undefined;
+
+    const { data: existing } = await db.from('profiles').select('id').eq('email', email).maybeSingle();
+    if (existing) {
+      const { data: member } = await db.from('admins').select('disabled_at').eq('user_id', existing.id).maybeSingle();
+      if (member?.disabled_at) return fail(409, 'Cette personne fait déjà partie de l\'équipe (désactivée) : réactive-la dans la liste.');
+      if (member) return fail(409, 'Cette personne fait déjà partie de l\'équipe.');
+      return fail(409, 'Cet email est déjà celui d\'un compte e-commerçant. Utilise une autre adresse pour l\'équipe.');
+    }
+
+    // Laisse passer cet email même si les inscriptions sont fermées
+    // (lu par le trigger d'inscription ; table réservée à la clé service_role)
+    const { error: invErr } = await db.from('admin_invitations')
+      .upsert({ email, role, invited_by: caller.id, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString() });
+    if (invErr) return fail(500, 'Invitation impossible. Réessaie.');
+    const clearInvitation = () => db.from('admin_invitations').delete().eq('email', email);
+
+    const meta = { business_name: 'Équipe Margee+' };
+    let userId: string | undefined;
+    let link: string | undefined;
+    if (mode === 'link') {
+      const { data, error } = await db.auth.admin.generateLink({ type: 'invite', email, options: { data: meta, redirectTo } });
+      if (error) {
+        console.error('generateLink', error.message);
+        await clearInvitation();
+        return fail(502, /already|registered|exists/i.test(error.message) ? 'Cet email a déjà un compte.' : 'Lien d\'invitation impossible à créer. Réessaie.');
+      }
+      userId = data.user?.id;
+      link = data.properties?.action_link;
+    } else {
+      const { data, error } = await db.auth.admin.inviteUserByEmail(email, { data: meta, redirectTo });
+      if (error) {
+        console.error('inviteUserByEmail', error.message);
+        await clearInvitation();
+        const msg = /rate|limit|seconds/i.test(error.message)
+          ? 'Trop d\'emails envoyés : réessaie plus tard, ou crée un lien à partager.'
+          : /already|registered|exists/i.test(error.message)
+            ? 'Cet email a déjà un compte.'
+            : 'Email d\'invitation non envoyé. Crée plutôt un lien à partager.';
+        return fail(502, msg);
+      }
+      userId = data.user?.id;
+    }
+    await clearInvitation();
+    if (!userId) return fail(500, 'Invitation impossible. Réessaie.');
+
+    const { error: insErr } = await db.from('admins').insert({ user_id: userId, role, invited_by: caller.id });
+    if (insErr) {
+      await db.auth.admin.deleteUser(userId); // pas de compte orphelin
+      return fail(500, 'Invitation impossible. Réessaie.');
+    }
+    await db.from('admin_audit_log').insert({
+      admin_id: caller.id, admin_email: caller.email, action: 'admin.invite',
+      account_id: userId, before: null, after: { email, role, mode }, reason,
+    });
+    return reply(200, { ok: true, user_id: userId, email, role, mode, ...(link ? { link } : {}) });
+  }
+
+  const accountId = String(body.account_id || '');
+  if (!UUID.test(accountId)) return fail(400, 'Compte invalide.');
 
   // Cible : un e-commerçant existant, jamais un compte admin
   const { data: target } = await db.from('profiles').select('id, business_name, email').eq('id', accountId).maybeSingle();

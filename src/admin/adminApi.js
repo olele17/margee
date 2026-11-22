@@ -21,7 +21,7 @@ export function adminError(error, fallback = 'Action impossible. Réessaie.') {
   if (!error) return new Error(fallback);
   if (isNetworkError(error)) return new Error('Connexion impossible, réessaie.');
   const msg = String(error.message || '');
-  if (['P0001', 'P0002', '22023', '42501'].includes(error.code) && /[éèàçù]|^(Accès|Action|Motif|Compte|Plan|Prix|Indique|Ordre|Impossible|Ce |Cette |Le |La |Les )/.test(msg)) {
+  if (['P0001', 'P0002', '22023', '42501'].includes(error.code) && /[éèàçù]|^(Accès|Action|Motif|Compte|Plan|Prix|Indique|Ordre|Impossible|Membre|Message|Rôle|Tu |Ce |Cette |Le |La |Les )/.test(msg)) {
     return new Error(msg);
   }
   if (error.code === '42501') return new Error('Action réservée à un autre rôle administrateur.');
@@ -229,5 +229,73 @@ export async function updatePlan(id, form, reason) {
     p_reason: reason,
   });
   if (error) throw adminError(error);
+  return data;
+}
+
+// ── PARAMÈTRES DE LA PLATEFORME (super_admin) ────────────────────
+const SETTING_KEYS = ['signup_open', 'signup_closed_message', 'trial_days'];
+
+export async function getPlatformSettings() {
+  const { data, error } = await sb().from('platform_settings').select('key, value, updated_at').in('key', SETTING_KEYS);
+  if (error) throw adminError(error, 'Impossible de charger les paramètres.');
+  const get = (k) => data.find((r) => r.key === k);
+  return {
+    signupOpen: get('signup_open')?.value !== false,
+    closedMessage: String(get('signup_closed_message')?.value ?? ''),
+    trialDays: Number(get('trial_days')?.value) || 3,
+    updatedAt: data.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), ''),
+  };
+}
+
+export async function updatePlatformSettings({ signupOpen, closedMessage, trialDays }, reason) {
+  const { data, error } = await sb().rpc('admin_update_settings', {
+    p_signup_open: signupOpen, p_closed_message: closedMessage, p_trial_days: trialDays, p_reason: reason,
+  });
+  if (error) throw adminError(error);
+  return data;
+}
+
+// ── ÉQUIPE (super_admin) ─────────────────────────────────────────
+export async function listTeam() {
+  const { data, error } = await sb().rpc('admin_list_team');
+  if (error) throw adminError(error, 'Impossible de charger l\'équipe.');
+  return data || [];
+}
+
+export async function setTeamRole(userId, role, reason) {
+  const { error } = await sb().rpc('admin_set_role', { p_user_id: userId, p_role: role, p_reason: reason });
+  if (error) throw adminError(error);
+}
+
+export async function setTeamDisabled(userId, disabled, reason) {
+  const { error } = await sb().rpc('admin_set_team_disabled', { p_user_id: userId, p_disabled: disabled, p_reason: reason });
+  if (error) throw adminError(error);
+}
+
+/**
+ * Invitation (Edge Function, clé service_role côté serveur) :
+ * mode 'email' (Supabase envoie l'email) ou 'link' (lien renvoyé ici,
+ * à transmettre soi-même).
+ */
+export function inviteTeamMember(email, role, mode, reason) {
+  return callAdminActions({
+    action: 'invite_admin', email, role, mode, reason,
+    redirect_to: `${window.location.origin}/reinitialiser-mot-de-passe?invitation=1`,
+  }, 'Invitation impossible. Réessaie.');
+}
+
+// ── JOURNAL D'ACTIVITÉ (tout admin) ──────────────────────────────
+export async function listAudit({ admin = '', action = '', account = '', from = '', to = '', search = '', page = 1, pageSize = 50 } = {}) {
+  const { data, error } = await sb().rpc('admin_list_audit', {
+    p_admin: admin || null,
+    p_action: action || null,
+    p_account: account || null,
+    p_from: from || null,
+    p_to: to || null,
+    p_search: search || null,
+    p_page: page,
+    p_page_size: pageSize,
+  });
+  if (error) throw adminError(error, 'Impossible de charger le journal.');
   return data;
 }

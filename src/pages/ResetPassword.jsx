@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { hasSession, updatePassword, isSubscriptionActive } from '../services/api';
+import { getAdminRole } from '../admin/adminApi';
 import AuthShell from '../components/AuthShell';
 
 /**
@@ -12,6 +13,8 @@ import AuthShell from '../components/AuthShell';
 export default function ResetPassword() {
   const { refresh } = useAuth();
   const navigate = useNavigate();
+  // Lien d'invitation d'un membre de l'équipe (/admin/parametres)
+  const invitation = useSearchParams()[0].get('invitation') === '1';
   const [status, setStatus] = useState('checking'); // checking | ready | invalid
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -41,6 +44,9 @@ export default function ResetPassword() {
     try {
       await updatePassword(password);
       const account = await refresh();
+      // Membre de l'équipe : direction l'espace admin
+      const role = await getAdminRole().catch(() => null);
+      if (role) { navigate('/admin', { replace: true }); return; }
       navigate(isSubscriptionActive(account) ? '/app/dashboard' : '/abonnement', { replace: true });
     } catch (e2) {
       setErr(e2.message);
@@ -59,7 +65,7 @@ export default function ResetPassword() {
 
   if (status === 'invalid') {
     return (
-      <AuthShell label="Nouveau mot de passe" title="Lien invalide ou expiré" subtitle="Les liens de réinitialisation ne servent qu'une fois et expirent après une heure.">
+      <AuthShell label={invitation ? "Invitation" : "Nouveau mot de passe"} title="Lien invalide ou expiré" subtitle={invitation ? "Ce lien d'invitation a déjà servi ou a expiré. Demande une nouvelle invitation au super admin." : "Les liens de réinitialisation ne servent qu'une fois et expirent après une heure."}>
         <Link to="/mot-de-passe-oublie" className="au-btn au-btn--gold">Demander un nouveau lien</Link>
         <div className="au-switch"><Link to="/connexion">Retour à la connexion</Link></div>
       </AuthShell>
@@ -67,7 +73,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthShell label="Nouveau mot de passe" title="Choisis ton nouveau mot de passe" subtitle="8 caractères minimum.">
+    <AuthShell label={invitation ? "Équipe Margee+" : "Nouveau mot de passe"} title={invitation ? "Bienvenue dans l'équipe" : "Choisis ton nouveau mot de passe"} subtitle={invitation ? "Choisis ton mot de passe pour accéder à l'espace admin (8 caractères minimum)." : "8 caractères minimum."}>
       <form className="au-form" onSubmit={submit} noValidate>
         <div className="au-field">
           <label htmlFor="rp-password">Nouveau mot de passe</label>

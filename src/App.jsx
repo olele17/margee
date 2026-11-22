@@ -13,12 +13,13 @@ import PaymentReturn from './pages/PaymentReturn';
 import AdminRoute from './admin/AdminRoute';
 import AdminLayout from './admin/AdminLayout';
 import AdminLogin from './admin/pages/AdminLogin';
-import ComingSoon from './admin/pages/ComingSoon';
 import AdminOverview from './admin/pages/Overview';
 import AdminMerchants from './admin/pages/Merchants';
 import AdminMerchantDetail from './admin/pages/MerchantDetail';
 import AdminPayments from './admin/pages/Payments';
 import AdminPlans from './admin/pages/Plans';
+import AdminSettings from './admin/pages/Settings';
+import AdminAuditLog from './admin/pages/AuditLog';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -91,8 +92,8 @@ export default function App() {
             <Route path="marchands/:id" element={<AdminMerchantDetail />} />
             <Route path="paiements" element={<AdminPayments />} />
             <Route path="plans" element={<AdminRoute permission="plans.view"><AdminPlans /></AdminRoute>} />
-            <Route path="parametres" element={<AdminRoute permission="settings.view"><ComingSoon title="Paramètres et équipe" step={6} icon="ti-settings" /></AdminRoute>} />
-            <Route path="journal" element={<ComingSoon title="Journal d'activité" step={6} icon="ti-history" />} />
+            <Route path="parametres" element={<AdminRoute permission="settings.view"><AdminSettings /></AdminRoute>} />
+            <Route path="journal" element={<AdminRoute permission="audit.view"><AdminAuditLog /></AdminRoute>} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
 

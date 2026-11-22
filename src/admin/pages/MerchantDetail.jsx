@@ -307,6 +307,9 @@ export default function MerchantDetail() {
       <section className="db-card db-recent" aria-labelledby="adm-hist-title">
         <div className="db-recent-head">
           <h2 id="adm-hist-title" className="db-recent-title">Actions de l'équipe sur ce compte</h2>
+          <Link className="btn btn-ghost btn-sm" to={`/admin/journal?compte=${id}`}>
+            Tout le journal <i className="ti ti-arrow-right" aria-hidden="true" />
+          </Link>
         </div>
         <div className="db-table-scroll">
           <table className="db-table">

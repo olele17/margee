@@ -1,7 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getSignupStatus } from '../services/api';
 import AuthShell from '../components/AuthShell';
+
+/* Inscriptions fermées depuis /admin/parametres : message de l'équipe */
+function SignupClosed({ message }) {
+  return (
+    <AuthShell label="Inscription" title="Inscriptions fermées" subtitle="Margee+ n'accepte pas de nouveaux comptes pour le moment.">
+      <div className="au-info" role="status">
+        <i className="ti ti-lock" aria-hidden="true" />
+        <p>{message}</p>
+      </div>
+      <Link to="/connexion" className="au-btn au-btn--gold" style={{ marginTop: 18 }}>J'ai déjà un compte : me connecter</Link>
+      <div className="au-switch"><Link to="/">Retour à l'accueil</Link></div>
+    </AuthShell>
+  );
+}
 
 export default function Signup() {
   const { doSignup } = useAuth();
@@ -12,6 +27,15 @@ export default function Signup() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
+  // Inscriptions ouvertes ? (la base refuse de toute façon si elles sont fermées)
+  const [closedMessage, setClosedMessage] = useState('');
+  useEffect(() => {
+    let alive = true;
+    getSignupStatus()
+      .then((s) => { if (alive && !s.open) setClosedMessage(s.message); })
+      .catch(() => { /* réseau : le formulaire reste affiché, la base tranchera */ });
+    return () => { alive = false; };
+  }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -37,6 +61,8 @@ export default function Signup() {
       setLoading(false);
     }
   };
+
+  if (closedMessage) return <SignupClosed message={closedMessage} />;
 
   if (confirmEmail) {
     return (

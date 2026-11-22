@@ -105,13 +105,20 @@ async function fetchAccount(userId) {
 }
 
 // ── AUTH / COMPTES (Supabase Auth) ───────────────────────────────
-// Lecture publique : les inscriptions sont-elles ouvertes ?
-async function isSignupOpen() {
+// Lecture publique : les inscriptions sont-elles ouvertes ? Et le message
+// à afficher quand elles sont fermées (réglés dans /admin/parametres).
+export async function getSignupStatus() {
   const { data, error } = await requireSupabase()
-    .from('platform_settings').select('value').eq('key', 'signup_open').maybeSingle();
+    .from('platform_settings').select('key, value').in('key', ['signup_open', 'signup_closed_message']);
   if (error) throw toError(error);
-  return data ? data.value !== false : true;
+  const open = data?.find((r) => r.key === 'signup_open');
+  const message = data?.find((r) => r.key === 'signup_closed_message')?.value;
+  return {
+    open: open ? open.value !== false : true,
+    message: typeof message === 'string' && message.trim() ? message.trim() : AUTH_ERRORS.signup_disabled,
+  };
 }
+
 
 /**
  * Crée le compte. Le profil et l'abonnement « pending » sont créés par
@@ -121,9 +128,8 @@ async function isSignupOpen() {
 export async function signup({ ownerName, businessName, phone, email, password }) {
   const sb = requireSupabase();
   if (String(password || '').length < 8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
-  let open;
-  try { open = await isSignupOpen(); } catch (e) { throw e; }
-  if (!open) throw new Error(AUTH_ERRORS.signup_disabled);
+  const status = await getSignupStatus();
+  if (!status.open) throw new Error(status.message);
 
   const { data, error } = await sb.auth.signUp({
     email: String(email).trim(),
