@@ -114,7 +114,7 @@ export default function Subscribe() {
                   {p.price ? fmt(p.price) : 'Gratuit'}
                 </div>
                 <div style={{ fontSize: 11, color: '#777' }}>
-                  {p.price ? 'par mois' : `${p.receiptLimit} reçus offerts`}
+                  {p.price ? 'par mois' : `${p.receiptLimit} essais offerts : reçus, factures ou devis`}
                 </div>
               </button>
             ))}

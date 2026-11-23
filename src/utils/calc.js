@@ -178,7 +178,7 @@ export function computeChallengeProgress(challenge, sales, ads, products = [], n
    usage = [{ period: 'AAAA-MM-01', issued }] (reçus émis, suppressions
    de ventes non déduites : même règle que la fonction SQL record_sale).
    ══════════════════════════════════════════════════════════════════ */
-export function computeReceiptQuota(plan, usage = [], now = new Date()) {
+export function computeReceiptQuota(plan, usage = [], now = new Date(), docsUsed = 0) {
   if (!plan || plan.receiptLimit == null) {
     return { limited: false, limit: null, used: 0, remaining: null, scope: null, reached: false, nearLimit: false, percent: 0 };
   }
@@ -186,7 +186,9 @@ export function computeReceiptQuota(plan, usage = [], now = new Date()) {
   const currentMonth = now.toLocaleDateString('en-CA', { timeZone: 'Africa/Dakar' }).slice(0, 7);
   const used = usage
     .filter((u) => !monthly || String(u.period).slice(0, 7) === currentMonth)
-    .reduce((a, u) => a + Number(u.issued || 0), 0);
+    .reduce((a, u) => a + Number(u.issued || 0), 0)
+    // Free : les factures et devis comptent aussi comme des essais
+    + (monthly ? 0 : Number(docsUsed || 0));
   const limit = plan.receiptLimit;
   const remaining = Math.max(limit - used, 0);
   return {

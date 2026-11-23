@@ -2046,3 +2046,11 @@ td.bold {
   .privacy-btn { flex: 0 0 auto !important; min-width: 44px; padding-left: 12px; padding-right: 12px; }
   .privacy-btn span { display: none; }
 }
+
+/* ── Essais gratuits (plan Free) ─────────────────────────────── */
+.trial-notice { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; padding: 14px 16px; border-radius: 14px; background: var(--cream-2); border: 1px solid #EADBB9; color: var(--dark-text); font-size: 14px; line-height: 1.5; }
+.trial-notice > .ti { font-size: 22px; color: var(--gold-dark); flex-shrink: 0; }
+.trial-notice > div { flex: 1; min-width: 200px; }
+.trial-notice span { color: var(--muted-text); }
+.trial-notice--reached { background: #FDF1EE; border-color: #F2C9BF; }
+.trial-notice--reached > .ti { color: #B2453A; }

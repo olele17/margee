@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import '../../styles/documents.css';
 import { money, useAmountsHidden } from '../../utils/amountPrivacy';
 import PrivacyToggle from '../../components/PrivacyToggle';
+import FreeTrialNotice from '../../components/FreeTrialNotice';
 
 const dateFr = (iso) => (iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
@@ -103,6 +104,9 @@ export default function Documents() {
           <Link className="btn btn-primary" to="/app/documents/nouveau?type=invoice"><i className="ti ti-file-invoice" /> Nouvelle facture</Link>
         </div>
       </div>
+
+      {/* Plan Free : essais restants (reçus, factures ou devis) */}
+      <FreeTrialNotice refreshKey={docs?.length} />
 
       <div className="doc-stats">
         <div className="doc-stat">

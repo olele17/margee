@@ -269,11 +269,12 @@ function ActiveChallenge({ challenges, sales, ads, products }) {
 }
 
 /* ── Carte « plan et reçus » (quota du plan + appel à passer au plan supérieur) ── */
-function QuotaCard({ account, usage }) {
+function QuotaCard({ account, usage, trial }) {
   const { all } = usePlans();
   const planKey = account?.subscription?.plan;
   const plan = all[planKey];
-  const quota = useMemo(() => computeReceiptQuota(plan, usage), [plan, usage]);
+  const docsUsed = trial ? trial.quotes + trial.invoices : 0;
+  const quota = useMemo(() => computeReceiptQuota(plan, usage, undefined, docsUsed), [plan, usage, docsUsed]);
   if (!plan || !quota.limited) return null;           // Elite : illimité
   if (planKey !== 'free' && !quota.reached && !quota.nearLimit) return null; // Pro : seulement à l'approche de la limite
 
@@ -291,18 +292,20 @@ function QuotaCard({ account, usage }) {
   let title;
   let text;
   if (trialDaysLeft !== null && !quota.reached) {
-    title = `Essai gratuit : encore ${daysLabel} · ${quota.used} / ${quota.limit} reçus utilisés`;
+    title = `Essai gratuit : encore ${daysLabel} · ${quota.used} / ${quota.limit} essais utilisés`;
     text = `À la fin de l'essai, passe à ${nextPlan.label} (${fmt(nextPlan.price)} / mois) pour continuer sans interruption.`;
   } else if (quota.reached) {
-    title = isFree ? `Tu as utilisé tes ${quota.limit} reçus gratuits` : `Limite de ${quota.limit} reçus atteinte ce mois-ci`;
+    title = isFree ? `Tu as utilisé tes ${quota.limit} essais gratuits` : `Limite de ${quota.limit} reçus atteinte ce mois-ci`;
     text = isFree
-      ? `Passe à ${nextPlan.label} (${fmt(nextPlan.price)} / mois) pour continuer à enregistrer tes ventes et générer tes reçus.`
+      ? `Passe à ${nextPlan.label} (${fmt(nextPlan.price)} / mois) pour continuer à créer tes reçus, factures et devis.`
       : `Passe à ${nextPlan.label} pour des reçus illimités, ou attends le 1er du mois prochain.`;
   } else if (quota.nearLimit) {
-    title = `Plus que ${quota.remaining} reçu${quota.remaining > 1 ? 's' : ''} ${isFree ? 'gratuit' + (quota.remaining > 1 ? 's' : '') : 'ce mois-ci'}`;
+    title = isFree
+      ? `Plus que ${quota.remaining} essai${quota.remaining > 1 ? 's' : ''} gratuit${quota.remaining > 1 ? 's' : ''} (reçus, factures ou devis)`
+      : `Plus que ${quota.remaining} reçu${quota.remaining > 1 ? 's' : ''} ce mois-ci`;
     text = `Anticipe : avec ${nextPlan.label}, ${nextPlan.receiptLimit ? `${nextPlan.receiptLimit} reçus par mois` : 'tes reçus sont illimités'}.`;
   } else {
-    title = `Plan ${plan.label} : ${quota.used} / ${quota.limit} reçus utilisés ${scopeLabel}`;
+    title = `Plan ${plan.label} : ${quota.used} / ${quota.limit} ${isFree ? 'essais' : 'reçus'} utilisés ${scopeLabel}`;
     text = `Passe à ${nextPlan.label} pour ${nextPlan.receiptLimit ? `${nextPlan.receiptLimit} reçus par mois` : 'des reçus illimités'}.`;
   }
 
@@ -340,8 +343,12 @@ export default function Dashboard() {
 
   // Reçus émis (quota du plan), rechargés quand le nombre de ventes change
   const [usage, setUsage] = useState([]);
+  const [trial, setTrial] = useState(null);
   useEffect(() => {
-    if (account) api.getReceiptUsage(account.id).then(setUsage).catch(() => setUsage([]));
+    if (!account) return;
+    api.getReceiptUsage(account.id).then(setUsage).catch(() => setUsage([]));
+    // Essais Free : les factures et devis comptent aussi
+    if (account.subscription?.plan === 'free') api.getTrialUsage().then(setTrial).catch(() => setTrial(null));
   }, [account, sales.length]);
 
   // Filtre de dates : brouillon (champs) puis appliqué (bouton Filtrer)
@@ -445,7 +452,7 @@ export default function Dashboard() {
       {rangeErr && <div className="db-filter-err" role="alert">{rangeErr}</div>}
 
       {/* ── Plan et reçus : appel à passer au plan supérieur ── */}
-      <QuotaCard account={account} usage={usage} />
+      <QuotaCard account={account} usage={usage} trial={trial} />
 
       {/* ── Alerte de déficit sur la période ────────────────── */}
       {stats.netProfit < 0 && (

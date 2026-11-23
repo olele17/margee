@@ -7,6 +7,7 @@ import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import { SALE_RECORDED_EVENT } from '../../pwa/InstallPrompt';
 import { money, useAmountsHidden } from '../../utils/amountPrivacy';
 import PrivacyToggle from '../../components/PrivacyToggle';
+import FreeTrialNotice from '../../components/FreeTrialNotice';
 
 const blank = {
   date: today(), productId: '', qty: 1,
@@ -98,6 +99,9 @@ export default function Sales() {
           <i className="ti ti-plus" /> Enregistrer une vente
         </button>
       </div>
+
+      {/* Plan Free : essais restants (reçus, factures ou devis) */}
+      <FreeTrialNotice refreshKey={sales.length} />
 
       <div className="filter-bar" style={{ marginBottom: 16 }}>
         <input

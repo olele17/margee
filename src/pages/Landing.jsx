@@ -123,10 +123,10 @@ const PROFILES = [
 
 const FAQ = [
   { q: 'Est-ce que je dois savoir faire de la comptabilité ?', a: 'Non. Tu saisis tes produits, tes ventes et tes dépenses : Margee+ fait tous les calculs à ta place, y compris ta vraie marge après pubs et livraisons.' },
-  { q: 'Combien coûte Margee+ ?', a: 'Tu commences gratuitement avec quelques reçus pour tester. Ensuite, tu choisis Pro ou Elite, au mois ou à l\'année (avec des mois offerts). Les prix sont en F CFA, sans engagement.' },
+  { q: 'Combien coûte Margee+ ?', a: 'Tu commences gratuitement avec 3 essais : des reçus, des factures ou des devis, au choix. Ensuite, tu choisis Pro ou Elite, au mois ou à l\'année (avec des mois offerts). Les prix sont en F CFA, sans engagement.' },
   { q: 'Comment je paie mon abonnement ?', a: 'En ligne et en toute sécurité, avec Wave, Orange Money ou une carte bancaire. Ton abonnement s\'active automatiquement dès que le paiement est confirmé.' },
   { q: 'Mes données sont-elles privées ?', a: 'Oui. Chaque e-commerçant a son espace personnel : tes ventes, tes clients et tes chiffres ne sont visibles que par toi.' },
-  { q: 'Que se passe-t-il après mes reçus gratuits ?', a: 'Le plan Free te permet de tester avec quelques reçus. Pour continuer, tu choisis Pro ou Elite : tes données restent là, rien n\'est perdu.' },
+  { q: 'Que se passe-t-il après mes 3 essais gratuits ?', a: 'Le plan Free te donne 3 essais, à utiliser comme tu veux : reçus, factures ou devis. Pour continuer, tu choisis Pro ou Elite : tes données restent là, rien n\'est perdu.' },
   { q: 'Je peux l\'utiliser sur mon téléphone ?', a: 'Oui. Margee+ s\'installe comme une application sur ton téléphone, Android ou iPhone, sans passer par un store : touche « Installer l\'app » en haut de cette page (sur mobile) ou dans le menu de ton espace. Elle s\'ouvre ensuite en plein écran depuis ton écran d\'accueil. Si tu arrives depuis TikTok ou WhatsApp, ouvre d\'abord le lien dans Chrome (Android) ou Safari (iPhone).' },
   { q: 'Je peux personnaliser mes reçus et mes factures ?', a: 'Oui : ton logo, tes coordonnées, ta signature et tes couleurs apparaissent sur tes reçus, tes factures et tes devis.' },
 ];
@@ -220,7 +220,7 @@ function Hero() {
             <Link to="/connexion" className="lp-btn lp-btn--outline lp-btn--lg">J'ai déjà un compte</Link>
           </div>
           <ul className="lp-hero-trust">
-            <li>{ti('gift')}3 reçus offerts</li>
+            <li>{ti('gift')}3 essais offerts</li>
             <li>{ti('device-mobile')}S'installe sur ton téléphone</li>
             <li>{ti('wallet')}Wave · Orange Money · carte</li>
           </ul>

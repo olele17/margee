@@ -257,7 +257,7 @@ export const PLANS = {
     label: 'Free', price: 0, days: null, receiptLimit: 3, trialDays: 3,
     features: [
       'Essai gratuit de 3 jours',
-      '3 reçus PDF pour tester',
+      '3 essais : reçus, factures ou devis',
       'Produits et coût de revient',
       'Ventes avec calcul du bénéfice',
       'Tableau de bord',
@@ -755,6 +755,15 @@ export async function deleteChallenge(accountId, challengeId) {
   const { error } = await requireSupabase().from('challenges').delete().eq('id', challengeId).eq('account_id', accountId);
   if (error) throw toDataError(error, 'Impossible de supprimer le challenge. Réessaie.');
   return listChallenges(accountId);
+}
+
+// ── ESSAIS GRATUITS (plan Free) ──────────────────────────────────
+// Reçus + devis + factures déjà créés par le compte connecté (RPC
+// my_trial_usage). Le contrôle lui-même est fait par la base.
+export async function getTrialUsage() {
+  const { data, error } = await requireSupabase().rpc('my_trial_usage');
+  if (error) throw error;
+  return { receipts: Number(data?.receipts || 0), quotes: Number(data?.quotes || 0), invoices: Number(data?.invoices || 0) };
 }
 
 // ── QUOTA DE REÇUS ───────────────────────────────────────────────

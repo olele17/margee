@@ -5,6 +5,7 @@ import * as api from '../../services/api';
 import { fmt } from '../../utils/calc';
 import { KIND_LABELS, STATUS, computeTotals, emptyLine, todayIso, addDays } from '../../utils/documents';
 import { downloadDocumentPdf } from '../../utils/documentPdf';
+import FreeTrialNotice from '../../components/FreeTrialNotice';
 import '../../styles/documents.css';
 
 const DEFAULT_NOTES = {
@@ -137,6 +138,9 @@ export default function DocumentEditor() {
           <button type="button" className="btn btn-outline" onClick={convert} disabled={saving}><i className="ti ti-arrow-right" /> Transformer en facture</button>
         )}
       </div>
+
+      {/* Plan Free : chaque nouveau document utilise un essai */}
+      {isNew && <FreeTrialNotice />}
 
       {toast && <div className="doc-toast" role="status"><i className="ti ti-circle-check" aria-hidden="true" /> {toast}</div>}
 
