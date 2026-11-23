@@ -522,13 +522,3 @@
   .db-kpi, .db-bar { transition: none; }
   .db-kpi:hover { transform: none; }
 }
-
-/* ── Mode discret : bouton masquer / afficher les montants ───── */
-.db-privacy-btn { display: inline-flex; align-items: center; gap: 6px; }
-.db-privacy-btn .ti { font-size: 18px; }
-.db-privacy-btn.is-on { background: var(--ink, #14161C); color: var(--gold, #D4A03A); border-color: var(--ink, #14161C); }
-.db-privacy-btn.is-on:hover { background: var(--ink, #14161C); color: var(--gold-light, #DBAA45); }
-@media (max-width: 480px) {
-  .db-privacy-btn { flex: 0 0 auto !important; min-width: 44px; padding-left: 12px; padding-right: 12px; }
-  .db-privacy-btn span { display: none; }
-}

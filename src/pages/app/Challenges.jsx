@@ -5,6 +5,8 @@ import { CHALLENGE_TYPES, computeChallengeProgress, periodPreset, fmt, fmtN } fr
 import ChallengeCard from '../../components/ChallengeCard';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import '../../styles/notes-challenges.css';
+import { useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const blank = () => ({ title: '', type: 'ca', target: '', productId: '', preset: 'month', ...periodPreset('month') });
 
@@ -28,6 +30,7 @@ const TABS = [
 ];
 
 export default function Challenges() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account, products, sales, ads, ready } = useBusinessData();
   const [challenges, setChallenges] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -135,6 +138,7 @@ export default function Challenges() {
           <h2 className="section-title">Challenges</h2>
           <div className="section-sub">Fixe-toi un objectif : Margee+ suit ta progression automatiquement avec tes ventes et tes pubs.</div>
         </div>
+        <PrivacyToggle />
         <button className="btn btn-primary" onClick={open ? close : openNew}>
           <i className={`ti ${open ? 'ti-x' : 'ti-plus'}`} /> {open ? 'Fermer' : 'Nouveau challenge'}
         </button>

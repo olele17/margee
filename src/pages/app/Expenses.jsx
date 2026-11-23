@@ -2,10 +2,13 @@ import { useMemo, useState } from 'react';
 import useBusinessData from '../../hooks/useBusinessData';
 import * as api from '../../services/api';
 import { fmt, fmtN, today, thisMonth, prevMonthKey, monthLabel, computeExpenseStats, groupExpensesByMonth } from '../../utils/calc';
+import { money, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const blank = { date: today(), description: '', amount: '', type: 'passif' };
 
 export default function Expenses() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account, expenses, reload, ready } = useBusinessData();
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
@@ -46,6 +49,7 @@ export default function Expenses() {
           <h2 className="section-title">Dépenses</h2>
           <div className="section-sub">Suivez ce que vous dépensez, pourquoi, et si c'est un actif ou un passif</div>
         </div>
+        <PrivacyToggle />
         <button className="btn btn-primary" onClick={() => setOpen(!open)}>
           <i className="ti ti-plus" /> Ajouter une dépense
         </button>
@@ -55,22 +59,22 @@ export default function Expenses() {
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card highlight">
           <div className="kpi-top-row"><span className="kpi-label">Total dépensé</span></div>
-          <div className="kpi-value">{fmt(allTime.total)}</div>
+          <div className="kpi-value">{money(allTime.total)}</div>
           <div className="kpi-trend-pill up"><span>{fmtN(allTime.count)} dépense(s)</span></div>
         </div>
         <div className="kpi-card">
           <div className="kpi-top-row"><span className="kpi-label">Actif</span></div>
-          <div className="kpi-value">{fmt(allTime.actif)}</div>
+          <div className="kpi-value">{money(allTime.actif)}</div>
           <div className="kpi-trend-pill up"><span>Garde/crée de la valeur</span></div>
         </div>
         <div className="kpi-card">
           <div className="kpi-top-row"><span className="kpi-label">Passif</span></div>
-          <div className="kpi-value">{fmt(allTime.passif)}</div>
+          <div className="kpi-value">{money(allTime.passif)}</div>
           <div className="kpi-trend-pill down"><span>Charge consommée</span></div>
         </div>
         <div className="kpi-card">
           <div className="kpi-top-row"><span className="kpi-label">Ce mois — {monthLabel(thisMonth())}</span></div>
-          <div className="kpi-value">{fmt(cm.total)}</div>
+          <div className="kpi-value">{money(cm.total)}</div>
           <div className={`kpi-trend-pill ${totalTrend === null ? '' : totalTrend > 0 ? 'down' : 'up'}`}>
             <span>{totalTrend === null ? 'Pas de comparaison' : `${totalTrend >= 0 ? '+' : ''}${totalTrend}% vs mois dernier`}</span>
           </div>
@@ -145,9 +149,9 @@ export default function Expenses() {
               return (
                 <div key={row.label} style={{ background: 'var(--bg-page)', borderRadius: 12, padding: 16, border: '1px solid var(--border-light)' }}>
                   <div style={{ fontSize: 12, color: 'var(--muted-text)', marginBottom: 6 }}>{row.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark-text)' }}>{fmt(row.a)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark-text)' }}>{money(row.a)}</div>
                   <div style={{ fontSize: 12, color: worse ? 'var(--danger)' : 'var(--success)', fontWeight: 700, marginTop: 4 }}>
-                    {diff >= 0 ? '+' : ''}{fmt(diff)} ({diff >= 0 ? '+' : ''}{pct}%)
+                    {diff >= 0 ? '+' : ''}{money(diff)} ({diff >= 0 ? '+' : ''}{pct}%)
                   </div>
                 </div>
               );
@@ -178,7 +182,7 @@ export default function Expenses() {
                       {e.type === 'actif' ? 'Actif' : 'Passif'}
                     </span>
                   </td>
-                  <td className="bold">{fmt(e.amount)}</td>
+                  <td className="bold">{money(e.amount)}</td>
                   <td><button className="btn btn-danger btn-sm" onClick={() => remove(e.id)}><i className="ti ti-trash" /></button></td>
                 </tr>
               ))}

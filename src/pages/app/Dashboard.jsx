@@ -6,6 +6,7 @@ import * as api from '../../services/api';
 import usePlans from '../../hooks/usePlans';
 import { challengeAdvice } from '../../components/ChallengeCard';
 import { MASK, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import '../../styles/dashboard.css';
 import '../../styles/notes-challenges.css';
@@ -331,7 +332,6 @@ function QuotaCard({ account, usage }) {
 /* ── Page ───────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { money } = useMoney();
-  const [amountsHidden, toggleAmounts] = useAmountsHidden();
   const { account, sales, ads, investments, products, ready } = useBusinessData();
   const [challenges, setChallenges] = useState([]);
   useEffect(() => {
@@ -437,16 +437,7 @@ export default function Dashboard() {
           <button type="button" className="btn btn-outline db-filter-btn" onClick={resetRange}>Ce mois-ci</button>
         )}
         <span className="db-filter-info">Du {dateFr(range.from)} au {dateFr(range.to)}</span>
-        <button
-          type="button"
-          className={`btn btn-outline db-filter-btn db-privacy-btn${amountsHidden ? ' is-on' : ''}`}
-          onClick={toggleAmounts}
-          title={amountsHidden ? 'Afficher les montants' : 'Masquer les montants'}
-          aria-label={amountsHidden ? 'Afficher les montants' : 'Masquer les montants'}
-        >
-          <i className={`ti ti-${amountsHidden ? 'eye' : 'eye-off'}`} aria-hidden="true" />
-          <span>{amountsHidden ? 'Afficher les montants' : 'Masquer les montants'}</span>
-        </button>
+        <PrivacyToggle className="db-filter-btn" />
         <Link to="/app/ventes" className="btn btn-primary db-filter-add">
           <i className="ti ti-plus" aria-hidden="true" /> Ajouter une vente
         </Link>

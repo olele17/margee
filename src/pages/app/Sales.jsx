@@ -5,6 +5,8 @@ import * as api from '../../services/api';
 import { fmt, today, selfPaidDelivery } from '../../utils/calc';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import { SALE_RECORDED_EVENT } from '../../pwa/InstallPrompt';
+import { money, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const blank = {
   date: today(), productId: '', qty: 1,
@@ -13,6 +15,7 @@ const blank = {
 };
 
 export default function Sales() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account, products, sales, reload, ready } = useBusinessData();
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
@@ -90,6 +93,7 @@ export default function Sales() {
     <div className="page-content">
       <div className="section-header">
         <h2 className="section-title">Ventes</h2>
+        <PrivacyToggle />
         <button className="btn btn-primary" onClick={() => setOpen(!open)}>
           <i className="ti ti-plus" /> Enregistrer une vente
         </button>
@@ -197,18 +201,18 @@ export default function Sales() {
                       {s.clientAddress && <div style={{ fontSize: 11.5, color: 'var(--muted-text)' }}>{s.clientAddress}</div>}
                     </td>
                     <td>{s.qty}</td>
-                    <td className="bold">{fmt(total)}</td>
+                    <td className="bold">{money(total)}</td>
                     <td>
                       {Number(s.deliveryCost) > 0 ? (
                         <>
-                          {fmt(s.deliveryCost)}
+                          {money(s.deliveryCost)}
                           <div style={{ fontSize: 11, color: 'var(--muted-text)' }}>
                             {s.deliveryPaidByClient ? 'Payée par client' : 'À votre charge'}
                           </div>
                         </>
                       ) : '—'}
                     </td>
-                    <td className={benef >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(benef)}</td>
+                    <td className={benef >= 0 ? 'amount-pos' : 'amount-neg'}>{money(benef)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 5 }}>
                         <button

@@ -2,10 +2,13 @@ import { useState } from 'react';
 import useBusinessData from '../../hooks/useBusinessData';
 import * as api from '../../services/api';
 import { computeStats, fmt, today } from '../../utils/calc';
+import { money, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const blank = { date: today(), description: '', amount: '' };
 
 export default function Investments() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account, sales, ads, investments, reload, ready } = useBusinessData();
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
@@ -32,6 +35,7 @@ export default function Investments() {
     <div className="page-content">
       <div className="section-header">
         <h2 className="section-title">Investissements &amp; ROI</h2>
+        <PrivacyToggle />
         <button className="btn btn-primary" onClick={() => setOpen(!open)}><i className="ti ti-plus" /> Ajouter</button>
       </div>
 
@@ -41,20 +45,20 @@ export default function Investments() {
           <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontSize: 40, fontWeight: 800, color: roiPos ? 'var(--success-on-dark)' : 'var(--danger-on-dark)' }}>
             {roiPos ? '+' : ''}{stats.roi.toFixed(1)}%
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>Pour {fmt(stats.totalInvested)} investis</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>Pour {money(stats.totalInvested)} investis</div>
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>Investi</div>
-            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.totalInvested)}</div>
+            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: '#fff' }}>{money(stats.totalInvested)}</div>
           </div>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>CA généré</div>
-            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: '#fff' }}>{fmt(stats.ca)}</div>
+            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: '#fff' }}>{money(stats.ca)}</div>
           </div>
           <div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>Bénéfice net</div>
-            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: stats.netProfit < 0 ? 'var(--danger-on-dark)' : '#fff' }}>{fmt(stats.netProfit)}</div>
+            <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontWeight: 700, color: stats.netProfit < 0 ? 'var(--danger-on-dark)' : '#fff' }}>{money(stats.netProfit)}</div>
           </div>
         </div>
       </div>
@@ -92,7 +96,7 @@ export default function Investments() {
                 <tr key={i.id}>
                   <td>{i.date}</td>
                   <td className="bold">{i.description}</td>
-                  <td className="bold">{fmt(i.amount)}</td>
+                  <td className="bold">{money(i.amount)}</td>
                   <td><button className="btn btn-danger btn-sm" onClick={() => remove(i.id)}><i className="ti ti-trash" /></button></td>
                 </tr>
               ))}

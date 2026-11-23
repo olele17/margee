@@ -2,10 +2,13 @@ import { useState } from 'react';
 import useBusinessData from '../../hooks/useBusinessData';
 import * as api from '../../services/api';
 import { fmt } from '../../utils/calc';
+import { money, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const blank = { name: '', category: '', costPrice: '', price: '' };
 
 export default function Products() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account, products, reload, ready } = useBusinessData();
   const [form, setForm] = useState(blank);
   const [editing, setEditing] = useState(null);
@@ -32,6 +35,7 @@ export default function Products() {
     <div className="page-content">
       <div className="section-header">
         <h2 className="section-title">Mes produits</h2>
+        <PrivacyToggle />
         <button className="btn btn-primary" onClick={() => { setOpen(!open); setEditing(null); setForm(blank); }}>
           <i className="ti ti-plus" /> Ajouter
         </button>
@@ -68,9 +72,9 @@ export default function Products() {
                 <tr key={p.id}>
                   <td className="bold">{p.name}</td>
                   <td>{p.category || '—'}</td>
-                  <td>{fmt(p.costPrice)}</td>
-                  <td className="bold">{fmt(p.price)}</td>
-                  <td className={margin(p) >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(margin(p))}</td>
+                  <td>{money(p.costPrice)}</td>
+                  <td className="bold">{money(p.price)}</td>
+                  <td className={margin(p) >= 0 ? 'amount-pos' : 'amount-neg'}>{money(margin(p))}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 5 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => edit(p)}><i className="ti ti-pencil" /></button>

@@ -2,10 +2,13 @@ import { useState } from 'react';
 import useBusinessData from '../../hooks/useBusinessData';
 import * as api from '../../services/api';
 import { fmt, today } from '../../utils/calc';
+import { money, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const blank = { date: today(), platform: 'Meta', amount: '', note: '' };
 
 export default function Ads() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account, ads, reload, ready } = useBusinessData();
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
@@ -33,13 +36,14 @@ export default function Ads() {
           <h2 className="section-title">Pubs dépensées</h2>
           <div className="section-sub">Ces montants sont déduits de ton bénéfice</div>
         </div>
+        <PrivacyToggle />
         <button className="btn btn-primary" onClick={() => setOpen(!open)}><i className="ti ti-plus" /> Ajouter</button>
       </div>
 
       <div className="stat-row" style={{ marginBottom: 18 }}>
         <div className="card" style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Total dépensé</div>
-          <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontSize: 20, fontWeight: 800, marginTop: 6 }}>{fmt(total)}</div>
+          <div style={{ fontFamily: 'Bricolage Grotesque, Inter, sans-serif', fontSize: 20, fontWeight: 800, marginTop: 6 }}>{money(total)}</div>
         </div>
       </div>
 
@@ -77,7 +81,7 @@ export default function Ads() {
                   <td>{a.date}</td>
                   <td><span className="badge pending">{a.platform}</span></td>
                   <td>{a.note || '—'}</td>
-                  <td className="bold">{fmt(a.amount)}</td>
+                  <td className="bold">{money(a.amount)}</td>
                   <td><button className="btn btn-danger btn-sm" onClick={() => remove(a.id)}><i className="ti ti-trash" /></button></td>
                 </tr>
               ))}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CHALLENGE_TYPES, fmt, fmtN } from '../utils/calc';
+import { money, useAmountsHidden } from '../utils/amountPrivacy';
 
 export const STATUS_LABELS = {
   upcoming: 'À venir',
@@ -29,15 +30,15 @@ const plural = (n, one, many) => (Math.abs(n) > 1 ? many : one);
 export function challengeAdvice(challenge, pr) {
   const isProduct = challenge.type === 'product_units';
   const noun = (n) => (isProduct ? plural(n, 'pièce', 'pièces') : plural(n, 'vente', 'ventes'));
-  const value = (n) => (pr.unit === 'money' ? fmt(Math.round(n)) : `${fmtN(Math.round(n))} ${noun(Math.round(n))}`);
+  const value = (n) => (pr.unit === 'money' ? money(Math.round(n)) : `${fmtN(Math.round(n))} ${noun(Math.round(n))}`);
 
   if (pr.status === 'upcoming') {
     return `Commence dans ${pr.daysUntilStart} ${plural(pr.daysUntilStart, 'jour', 'jours')}.`;
   }
   if (pr.isBudget) {
-    if (pr.status === 'failed') return `Budget dépassé de ${fmt(Math.round(-pr.remaining))}.`;
-    if (pr.status === 'success') return `Budget respecté : ${fmt(Math.round(pr.remaining))} non dépensés.`;
-    return `Il te reste ${fmt(Math.round(pr.remaining))} à dépenser, soit ${fmt(Math.floor(pr.perDay))} max par jour.`;
+    if (pr.status === 'failed') return `Budget dépassé de ${money(Math.round(-pr.remaining))}.`;
+    if (pr.status === 'success') return `Budget respecté : ${money(Math.round(pr.remaining))} non dépensés.`;
+    return `Il te reste ${money(Math.round(pr.remaining))} à dépenser, soit ${money(Math.floor(pr.perDay))} max par jour.`;
   }
   if (pr.status === 'success') {
     const extra = pr.realized - pr.target;
@@ -45,7 +46,7 @@ export function challengeAdvice(challenge, pr) {
   }
   if (pr.status === 'failed') return `Il a manqué ${value(pr.remaining)}.`;
   // En cours
-  if (pr.unit === 'money') return `Il te faut ${fmt(Math.ceil(pr.perDay))} par jour pour réussir.`;
+  if (pr.unit === 'money') return `Il te faut ${money(Math.ceil(pr.perDay))} par jour pour réussir.`;
   if (pr.perDay >= 1) {
     const n = Math.ceil(pr.perDay);
     return `Il te faut ${n} ${noun(n)} par jour pour réussir.`;
@@ -57,9 +58,10 @@ export function challengeAdvice(challenge, pr) {
 }
 
 export default function ChallengeCard({ challenge, progress: pr, productName, onEdit, onDelete, compact = false }) {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const type = CHALLENGE_TYPES[challenge.type];
   const isProduct = challenge.type === 'product_units';
-  const fmtVal = (n) => (pr.unit === 'money' ? fmt(Math.round(n)) : fmtN(Math.round(n)));
+  const fmtVal = (n) => (pr.unit === 'money' ? money(Math.round(n)) : fmtN(Math.round(n)));
   const unitWord = pr.unit === 'count' ? ` ${isProduct ? 'pièces' : 'ventes'}` : '';
   const pctShown = Math.round(pr.percent);
   const barWidth = Math.min(pr.percent, 100);

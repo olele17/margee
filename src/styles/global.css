@@ -2035,3 +2035,14 @@ td.bold {
 /* Responsive : un élément positionné dans un tableau (ex. en-tête
    « sr-only ») reste dans le cadre qui défile au lieu d'élargir la page */
 .table-scroll, .db-table-scroll { position: relative; }
+
+/* ── Mode discret : bouton masquer / afficher les montants ───── */
+.privacy-btn { display: inline-flex; align-items: center; gap: 6px; }
+.privacy-btn .ti { font-size: 18px; }
+.privacy-btn.is-on { background: var(--ink); color: var(--gold); border-color: var(--ink); }
+.privacy-btn.is-on:hover { background: var(--ink); color: var(--gold-light); }
+.section-header > .privacy-btn { margin-left: auto; margin-right: -6px; }
+@media (max-width: 640px) {
+  .privacy-btn { flex: 0 0 auto !important; min-width: 44px; padding-left: 12px; padding-right: 12px; }
+  .privacy-btn span { display: none; }
+}

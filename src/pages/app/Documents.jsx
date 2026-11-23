@@ -7,6 +7,8 @@ import { KIND_LABELS, statusInfo, displayStatus } from '../../utils/documents';
 import { downloadDocumentPdf } from '../../utils/documentPdf';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import '../../styles/documents.css';
+import { money, useAmountsHidden } from '../../utils/amountPrivacy';
+import PrivacyToggle from '../../components/PrivacyToggle';
 
 const dateFr = (iso) => (iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
@@ -15,6 +17,7 @@ const dateFr = (iso) => (iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('
  * Les montants et numéros viennent de la base.
  */
 export default function Documents() {
+  useAmountsHidden(); // se réaffiche quand le mode discret change
   const { account } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -95,6 +98,7 @@ export default function Documents() {
           <div className="section-sub">Crée tes devis, transforme-les en factures et télécharge des PDF à tes couleurs.</div>
         </div>
         <div className="doc-new">
+          <PrivacyToggle />
           <Link className="btn btn-outline" to="/app/documents/nouveau?type=quote"><i className="ti ti-file-description" /> Nouveau devis</Link>
           <Link className="btn btn-primary" to="/app/documents/nouveau?type=invoice"><i className="ti ti-file-invoice" /> Nouvelle facture</Link>
         </div>
@@ -103,19 +107,19 @@ export default function Documents() {
       <div className="doc-stats">
         <div className="doc-stat">
           <span className="doc-stat-label">Devis en attente de réponse</span>
-          <strong>{fmt(stats.sum(stats.pendingQuotes))}</strong>
+          <strong>{money(stats.sum(stats.pendingQuotes))}</strong>
           <span className="doc-stat-sub">{stats.pendingQuotes.length} devis envoyé{stats.pendingQuotes.length > 1 ? 's' : ''}</span>
         </div>
         <div className="doc-stat">
           <span className="doc-stat-label">Factures à encaisser</span>
-          <strong>{fmt(stats.sum(stats.toCollect))}</strong>
+          <strong>{money(stats.sum(stats.toCollect))}</strong>
           <span className={`doc-stat-sub${stats.late.length ? ' is-late' : ''}`}>
-            {stats.late.length ? `dont ${stats.late.length} en retard (${fmt(stats.sum(stats.late))})` : `${stats.toCollect.length} facture${stats.toCollect.length > 1 ? 's' : ''} envoyée${stats.toCollect.length > 1 ? 's' : ''}`}
+            {stats.late.length ? `dont ${stats.late.length} en retard (${money(stats.sum(stats.late))})` : `${stats.toCollect.length} facture${stats.toCollect.length > 1 ? 's' : ''} envoyée${stats.toCollect.length > 1 ? 's' : ''}`}
           </span>
         </div>
         <div className="doc-stat doc-stat--dark">
           <span className="doc-stat-label">Factures payées ce mois-ci</span>
-          <strong>{fmt(stats.sum(stats.paidMonth))}</strong>
+          <strong>{money(stats.sum(stats.paidMonth))}</strong>
           <span className="doc-stat-sub">{stats.paidMonth.length} facture{stats.paidMonth.length > 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -157,7 +161,7 @@ export default function Documents() {
                       {dateFr(d.issueDate)}
                       {d.dueDate && <div className="doc-kind">{d.kind === 'quote' ? 'Valable' : 'Échéance'} : {dateFr(d.dueDate)}</div>}
                     </td>
-                    <td className="bold">{fmt(d.total)}</td>
+                    <td className="bold">{money(d.total)}</td>
                     <td><span className={`badge ${s.cls}`}><i className={`ti ${s.icon}`} aria-hidden="true" />{s.label}</span></td>
                     <td>
                       <div className="doc-actions">

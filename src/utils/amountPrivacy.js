@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmt } from './calc';
 
 /**
  * Mode discret : masque les montants du tableau de bord (comme dans une
@@ -32,3 +33,10 @@ export function useAmountsHidden() {
   const toggle = useCallback(() => setAmountsHidden(!hidden), []);
   return [state, toggle];
 }
+
+/**
+ * Montant affiché à l'écran (masqué en mode discret). Les composants qui
+ * l'utilisent appellent useAmountsHidden() pour se réafficher au
+ * changement. Ne pas utiliser pour les PDF ni les données enregistrées.
+ */
+export function money(n) { return hidden ? MASK : fmt(n); }
