@@ -267,6 +267,10 @@ a {
   color: #fff;
 }
 
+/* Les blocs du menu gardent leur taille : quand l'écran est petit, c'est
+   le menu qui défile (overflow-y: auto) au lieu d'écraser l'encart. */
+.sidebar > * { flex-shrink: 0; }
+
 /* Sidebar Footer & Download CTA Widget */
 .sidebar-cta-card {
   display: block;
@@ -1580,11 +1584,13 @@ td.bold {
     left: 0;
     width: min(280px, 85vw);
     height: 100vh;
+    height: 100dvh; /* hauteur réellement visible (barre d'adresse mobile) */
     padding: 20px 16px;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
-    z-index: 100;
+    z-index: 870; /* au-dessus du bouton de chat (850) */
     box-shadow: var(--shadow-lg);
+    overscroll-behavior: contain;
   }
   .sidebar.open {
     transform: translateX(0);
@@ -1597,7 +1603,7 @@ td.bold {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 99;
+    z-index: 865; /* sous le menu (870), au-dessus du chat (850) */
   }
   .topbar-menu-btn {
     display: flex;
