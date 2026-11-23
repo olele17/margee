@@ -103,7 +103,9 @@ Deno.serve(async (req) => {
   const statusRaw = String(pick(data, 'status', 'paymentStatus', 'state') ?? '');
   const amountRaw = pick(data, 'amount');
   const amount = amountRaw === undefined ? null : Math.round(Number(amountRaw));
-  const method = String(pick(data, 'paymentMeans', 'payment_type', 'paymentType', 'paymentMethod', 'pspName') ?? '');
+  // Opérateur (pspName : wave_money, orange_money, card…). Jamais paymentMeans :
+  // en Live il contient le numéro de téléphone ou la carte masquée du payeur.
+  const method = String(pick(data, 'pspName', 'payment_type', 'paymentType', 'paymentMethod') ?? '');
   const normalized = normalizeStatus(statusRaw);
 
   const { data: result, error } = await db.rpc('payment_webhook_apply', {

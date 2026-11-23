@@ -77,6 +77,13 @@ export const PAYMENT_METHODS = {
   wave_money: 'Wave', orange_money: 'Orange Money', free_money: 'Free Money', maxit: 'Maxit',
   card: 'Carte bancaire', mtn_money: 'MTN Money', moov_money: 'Moov Money',
 };
-export const methodLabel = (m) => (m ? PAYMENT_METHODS[m] || m : '—');
+export const methodLabel = (m) => {
+  if (!m) return '—';
+  if (PAYMENT_METHODS[m]) return PAYMENT_METHODS[m];
+  // Jamais de numéro du payeur : téléphone ou carte masquée → type seulement
+  if (/\*/.test(m)) return 'Carte bancaire';
+  if (/^\+?[\d\s]{6,}$/.test(m)) return 'Mobile money';
+  return m;
+};
 
 export const actionLabel = (a) => ACTION_LABELS[a] || a;

@@ -72,7 +72,9 @@ Deno.serve(async (req) => {
   const amountRaw = pick(data, 'amount');
   const amount = amountRaw === undefined ? null : Math.round(Number(amountRaw));
   const currency = String(pick(data, 'currency') ?? 'XOF');
-  const method = String(pick(data, 'paymentMeans', 'payment_type', 'paymentType', 'paymentMethod', 'pspName') ?? '');
+  // Opérateur (pspName : wave_money, orange_money, card…). Jamais paymentMeans :
+  // en Live il contient le numéro de téléphone ou la carte masquée du payeur.
+  const method = String(pick(data, 'pspName', 'payment_type', 'paymentType', 'paymentMethod') ?? '');
 
   if (!reference && !chargeId) return json(200, { received: true, result: 'no_reference' });
 
