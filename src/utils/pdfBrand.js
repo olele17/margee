@@ -3,7 +3,7 @@
  * pour les comptes du plan Free (essai gratuit ou ancien Free). Les
  * clients Pro et Elite ont des documents sans mention Margee+.
  */
-export const MARGEE_URL = 'margee.vercel.app';
+export const MARGEE_URL = 'www.margeeplus.com';
 
 /** Compte sur le plan gratuit : la mention Margee+ est ajoutée */
 export function isFreeTier(account) {

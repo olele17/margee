@@ -42,7 +42,7 @@ function DashboardWindow() {
     <div className="lp-win" role="img" aria-label="Exemple de tableau de bord Margee+ : chiffre d'affaires 485 000 F, bénéfice net 172 300 F, ROI des pubs × 4,5">
       <div className="lp-win-bar" aria-hidden="true">
         <span className="lp-win-dots"><i /><i /><i /></span>
-        <span className="lp-win-url">{ti('lock')} margee.vercel.app/app</span>
+        <span className="lp-win-url">{ti('lock')} margeeplus.com/app</span>
       </div>
       <div className="lp-win-body" aria-hidden="true">
         <div className="lp-win-head">
