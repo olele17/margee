@@ -5,6 +5,7 @@ import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, co
 import * as api from '../../services/api';
 import usePlans from '../../hooks/usePlans';
 import { challengeAdvice } from '../../components/ChallengeCard';
+import { MASK, useAmountsHidden } from '../../utils/amountPrivacy';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import '../../styles/dashboard.css';
 import '../../styles/notes-challenges.css';
@@ -30,6 +31,12 @@ function shortMoney(n) {
   if (n >= 1e6) return `${(n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M`;
   if (n >= 1e3) return `${Math.round(n / 1e3)} k`;
   return String(Math.round(n));
+}
+
+// Mode discret : montants remplacés par •••••• quand ils sont masqués
+function useMoney() {
+  const [hidden] = useAmountsHidden();
+  return { hidden, money: (n) => (hidden ? MASK : fmt(n)), short: (n) => (hidden ? '•••' : shortMoney(n)) };
 }
 
 function initials(name) {
@@ -105,6 +112,7 @@ function buildSeries(sales, mode) {
 }
 
 function SalesChart({ sales }) {
+  const { money, short } = useMoney();
   const [mode, setMode] = useState('week');
   const series = useMemo(() => buildSeries(sales, mode), [sales, mode]);
   const max = Math.max(...series.map((b) => b.value), 1);
@@ -115,7 +123,7 @@ function SalesChart({ sales }) {
       <div className="db-card-head">
         <div>
           <h2 id="db-chart-title" className="db-card-title">Statistique des ventes</h2>
-          <div className="db-card-sub">Chiffre d'affaires · total {fmt(total)}</div>
+          <div className="db-card-sub">Chiffre d'affaires · total {money(total)}</div>
         </div>
         <div className="db-tabs" role="group" aria-label="Période du graphique">
           {[['week', 'Semaine'], ['month', 'Mois'], ['year', 'Année']].map(([k, l]) => (
@@ -123,10 +131,10 @@ function SalesChart({ sales }) {
           ))}
         </div>
       </div>
-      <div className="db-bars" role="img" aria-label={`Chiffre d'affaires par ${mode === 'week' ? 'jour' : mode === 'month' ? 'semaine' : 'mois'} : ${series.map((b) => `${b.label} ${fmt(b.value)}`).join(', ')}`}>
+      <div className="db-bars" role="img" aria-label={`Chiffre d'affaires par ${mode === 'week' ? 'jour' : mode === 'month' ? 'semaine' : 'mois'} : ${series.map((b) => `${b.label} ${money(b.value)}`).join(', ')}`}>
         {series.map((b, i) => (
-          <div key={i} className="db-bar-col" title={`${b.title} : ${fmt(b.value)}`}>
-            <span className="db-bar-value">{b.value > 0 ? shortMoney(b.value) : ''}</span>
+          <div key={i} className="db-bar-col" title={`${b.title} : ${money(b.value)}`}>
+            <span className="db-bar-value">{b.value > 0 ? short(b.value) : ''}</span>
             <div className="db-bar-track">
               <div className={`db-bar${b.current ? ' db-bar--current' : ''}`} style={{ height: `${Math.max((b.value / max) * 100, b.value > 0 ? 4 : 0)}%` }} />
             </div>
@@ -140,6 +148,7 @@ function SalesChart({ sales }) {
 
 /* ── Donut : ventes par produit ─────────────────────────────── */
 function ProductDonut({ sales }) {
+  const { money, short } = useMoney();
   const slices = useMemo(() => {
     const map = {};
     sales.forEach((s) => { map[s.productName] = (map[s.productName] || 0) + s.qty * s.price; });
@@ -188,7 +197,7 @@ function ProductDonut({ sales }) {
                     strokeDashoffset={-offset}
                     transform="rotate(-90 90 90)"
                   >
-                    <title>{`${s.name} : ${fmt(s.value)}`}</title>
+                    <title>{`${s.name} : ${money(s.value)}`}</title>
                   </circle>
                 );
                 offset += len;
@@ -196,7 +205,7 @@ function ProductDonut({ sales }) {
               })}
             </svg>
             <div className="db-donut-center">
-              <strong>{shortMoney(total)}</strong>
+              <strong>{short(total)}</strong>
               <span>F CFA</span>
             </div>
           </div>
@@ -210,6 +219,7 @@ function ProductDonut({ sales }) {
 /* ── Carte « Challenge en cours » ───────────────────────────── */
 // Affiche le challenge actif dont la date de fin est la plus proche.
 function ActiveChallenge({ challenges, sales, ads, products }) {
+  const { money } = useMoney();
   const active = useMemo(() => challenges
     .map((c) => ({ challenge: c, progress: computeChallengeProgress(c, sales, ads, products) }))
     .filter((i) => i.progress.status === 'ongoing')
@@ -230,7 +240,7 @@ function ActiveChallenge({ challenges, sales, ads, products }) {
   }
 
   const { challenge, progress: pr } = active[0];
-  const fmtVal = (n) => (pr.unit === 'money' ? fmt(Math.round(n)) : fmtN(Math.round(n)));
+  const fmtVal = (n) => (pr.unit === 'money' ? money(Math.round(n)) : fmtN(Math.round(n)));
   const pct = Math.round(pr.percent);
   return (
     <section className="db-card db-challenge" aria-labelledby="db-challenge-title">
@@ -320,6 +330,8 @@ function QuotaCard({ account, usage }) {
 
 /* ── Page ───────────────────────────────────────────────────── */
 export default function Dashboard() {
+  const { money } = useMoney();
+  const [amountsHidden, toggleAmounts] = useAmountsHidden();
   const { account, sales, ads, investments, products, ready } = useBusinessData();
   const [challenges, setChallenges] = useState([]);
   useEffect(() => {
@@ -425,6 +437,16 @@ export default function Dashboard() {
           <button type="button" className="btn btn-outline db-filter-btn" onClick={resetRange}>Ce mois-ci</button>
         )}
         <span className="db-filter-info">Du {dateFr(range.from)} au {dateFr(range.to)}</span>
+        <button
+          type="button"
+          className={`btn btn-outline db-filter-btn db-privacy-btn${amountsHidden ? ' is-on' : ''}`}
+          onClick={toggleAmounts}
+          title={amountsHidden ? 'Afficher les montants' : 'Masquer les montants'}
+          aria-label={amountsHidden ? 'Afficher les montants' : 'Masquer les montants'}
+        >
+          <i className={`ti ti-${amountsHidden ? 'eye' : 'eye-off'}`} aria-hidden="true" />
+          <span>{amountsHidden ? 'Afficher les montants' : 'Masquer les montants'}</span>
+        </button>
         <Link to="/app/ventes" className="btn btn-primary db-filter-add">
           <i className="ti ti-plus" aria-hidden="true" /> Ajouter une vente
         </Link>
@@ -439,7 +461,7 @@ export default function Dashboard() {
         <div className="deficit-alert" role="alert">
           <i className="ti ti-alert-triangle" aria-hidden="true" />
           <span>
-            <strong>Déficit sur la période : {fmt(stats.netProfit)}.</strong>{' '}
+            <strong>Déficit sur la période : {money(stats.netProfit)}.</strong>{' '}
             Tes coûts (produits, pubs, livraisons) dépassent tes ventes.
           </span>
         </div>
@@ -447,15 +469,15 @@ export default function Dashboard() {
 
       {/* ── 4 cartes chiffrées ──────────────────────────────── */}
       <div className="db-kpis">
-        <KpiCard icon="ti-cash-banknote" label="Chiffre d'affaires" value={fmt(stats.ca)} trend={pctChange(stats.ca, prev.ca)} />
+        <KpiCard icon="ti-cash-banknote" label="Chiffre d'affaires" value={money(stats.ca)} trend={pctChange(stats.ca, prev.ca)} />
         <KpiCard
           icon={stats.netProfit < 0 ? 'ti-trending-down' : 'ti-trending-up'}
           label="Bénéfice net"
-          value={fmt(stats.netProfit)}
+          value={money(stats.netProfit)}
           trend={pctChange(stats.netProfit, prev.netProfit)}
           negative={stats.netProfit < 0}
         />
-        <KpiCard icon="ti-speakerphone" label="Pubs dépensées" value={fmt(stats.adSpend)} trend={pctChange(stats.adSpend, prev.adSpend)} />
+        <KpiCard icon="ti-speakerphone" label="Pubs dépensées" value={money(stats.adSpend)} trend={pctChange(stats.adSpend, prev.adSpend)} />
         <KpiCard
           icon="ti-chart-arrows-vertical"
           label="ROI"
@@ -516,7 +538,7 @@ export default function Dashboard() {
                     <td>{s.productName}</td>
                     <td className="db-nowrap" title={dateFr(s.date)}>{dateShort(s.date)}</td>
                     <td className="db-nowrap">{s.receiptNumber}</td>
-                    <td className="db-nowrap db-strong">{fmt(s.qty * s.price)}</td>
+                    <td className="db-nowrap db-strong">{money(s.qty * s.price)}</td>
                     <td className="db-nowrap">{s.clientPhone || '—'}</td>
                     <td>
                       <button
@@ -553,7 +575,7 @@ export default function Dashboard() {
                   <span className="db-avatar db-avatar--gold" aria-hidden="true">{initials(c.name)}</span>
                   <span className="db-top-name">
                     {c.name}
-                    <small>{fmt(c.total)}</small>
+                    <small>{money(c.total)}</small>
                   </span>
                   <span className="db-top-count" aria-label={`${c.count} achats`}>{c.count}</span>
                 </li>
@@ -592,9 +614,9 @@ export default function Dashboard() {
               return (
                 <div key={row.label} className="db-compare-item">
                   <div className="db-compare-label">{row.label}</div>
-                  <div className={`db-compare-value${!row.isCount && row.a < 0 ? ' amount-neg' : ''}`}>{row.isCount ? fmtN(row.a) : fmt(row.a)}</div>
+                  <div className={`db-compare-value${!row.isCount && row.a < 0 ? ' amount-neg' : ''}`}>{row.isCount ? fmtN(row.a) : money(row.a)}</div>
                   <div className={pos ? 'amount-pos' : 'amount-neg'}>
-                    {pos ? '+' : ''}{row.isCount ? fmtN(diff) : fmt(diff)} ({pos ? '+' : ''}{pct}%)
+                    {pos ? '+' : ''}{row.isCount ? fmtN(diff) : money(diff)} ({pos ? '+' : ''}{pct}%)
                   </div>
                 </div>
               );
@@ -617,9 +639,9 @@ export default function Dashboard() {
                         {m === thisMonth() && <span className="status-badge completed" style={{ marginLeft: 8 }}>En cours</span>}
                       </td>
                       <td>{fmtN(d.nb)}</td>
-                      <td className="db-strong">{fmt(d.ca)}</td>
-                      <td>{fmt(d.ads)}</td>
-                      <td className={net >= 0 ? 'amount-pos' : 'amount-neg'}>{fmt(net)}</td>
+                      <td className="db-strong">{money(d.ca)}</td>
+                      <td>{money(d.ads)}</td>
+                      <td className={net >= 0 ? 'amount-pos' : 'amount-neg'}>{money(net)}</td>
                     </tr>
                   );
                 })}
