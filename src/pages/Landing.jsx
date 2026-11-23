@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ANNUAL_MONTHS_PAID, annualPrice } from '../services/api';
 import usePlans from '../hooks/usePlans';
@@ -6,32 +6,21 @@ import InstallButton from '../pwa/InstallButton';
 import './Landing.css';
 
 /* ══════════════════════════════════════════════════════════════
-   LANDING MARGEE+
-   Structure : hero · chiffres · problème · pour qui · comment ça
-   marche · démo · tarifs · FAQ · appel final · pied de page.
-   Les écrans de téléphone sont dessinés en HTML/CSS (données
-   d'exemple). Les photos : déposer les fichiers dans public/landing/
-   et renseigner PHOTOS ci-dessous ; sans fichier, un visuel
-   décoratif s'affiche à la place.
+   LANDING MARGEE+ — identité propre : noir, or, crème, capitales.
+   Hero sombre (tableau de bord + ticket de reçu) · bande or qui
+   défile · avant / avec Margee+ · grille des outils · calculateur
+   de marge · 3 étapes · pour qui · tarifs · FAQ · bloc or final.
+   Les montants des maquettes sont des exemples.
    ══════════════════════════════════════════════════════════════ */
-
-const PHOTOS = {
-  hero: null,       // ex. '/landing/hero.webp' : e-commerçante qui vend depuis son téléphone
-  quotidien: null,  // vendeur débordé entre cahier, colis et téléphone
-  clients: null,    // cliente qui reçoit sa commande
-  reseaux: null,    // vendeuse en live / en story
-  boutique: null,   // gérant de boutique au comptoir
-  final: null,      // e-commerçante souriante avec un colis
-};
 
 const ti = (name) => <i className={`ti ti-${name}`} aria-hidden="true" />;
 
 // Montants : séparateur de milliers = espace insécable (2 400)
-const money = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const money = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-function Logo({ light = false }) {
+function Logo({ dark = false }) {
   return (
-    <Link to="/" className={`lp-logo${light ? ' lp-logo--light' : ''}`} aria-label="Margee+ — accueil">
+    <Link to="/" className={`lp-logo${dark ? ' lp-logo--dark' : ''}`} aria-label="Margee+ — accueil">
       <img src="/margee-mark.svg" alt="" width="40" height="40" />
       <span className="lp-logo-text">
         <span className="lp-logo-name">MARGEE+</span>
@@ -41,233 +30,96 @@ function Logo({ light = false }) {
   );
 }
 
-/* ── Photo (ou visuel décoratif tant qu'il n'y a pas de fichier) ── */
-function Photo({ src, alt, tone = 'warm', icon, caption, className = '' }) {
-  if (src) {
-    return <div className={`lp-photo ${className}`}><img src={src} alt={alt} loading="lazy" /></div>;
-  }
+function Label({ children, light = false }) {
+  return <span className={`lp-label${light ? ' lp-label--light' : ''}`}>{children}</span>;
+}
+
+/* ══ Maquettes ══════════════════════════════════════════════════ */
+const BARS = [['Juin', 38], ['Juil', 52], ['Août', 46], ['Sept', 64], ['Oct', 71], ['Nov', 92]];
+
+function DashboardWindow() {
   return (
-    <div className={`lp-photo lp-photo--art lp-photo--${tone} ${className}`} role="img" aria-label={alt}>
-      <svg className="lp-photo-pattern" aria-hidden="true" focusable="false">
-        <defs>
-          <pattern id={`wax-${tone}`} width="64" height="64" patternUnits="userSpaceOnUse">
-            <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="32" cy="32" r="12" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="32" cy="32" r="3" fill="currentColor" />
-            <path d="M0 0 L8 8 M56 56 L64 64 M64 0 L56 8 M8 56 L0 64" stroke="currentColor" strokeWidth="1.5" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill={`url(#wax-${tone})`} />
-      </svg>
-      {icon && (
-        <div className="lp-photo-badge" aria-hidden="true">
-          <span className="lp-photo-badge-icon">{ti(icon)}</span>
-          {caption && <span>{caption}</span>}
+    <div className="lp-win" role="img" aria-label="Exemple de tableau de bord Margee+ : chiffre d'affaires 485 000 F, bénéfice net 172 300 F, ROI des pubs × 4,5">
+      <div className="lp-win-bar" aria-hidden="true">
+        <span className="lp-win-dots"><i /><i /><i /></span>
+        <span className="lp-win-url">{ti('lock')} margee.vercel.app/app</span>
+      </div>
+      <div className="lp-win-body" aria-hidden="true">
+        <div className="lp-win-head">
+          <span>Tableau de bord <b>· novembre</b></span>
+          <span className="lp-win-flag">Exemple</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-/* ══ Écrans de téléphone (exemples) ═══════════════════════════ */
-function Phone({ children, label, className = '' }) {
-  return (
-    <div className={`lp-phone ${className}`} role="img" aria-label={label}>
-      <div className="lp-phone-screen">
-        <div className="lp-phone-status" aria-hidden="true"><span>9:41</span><span className="lp-phone-notch" /><span>{ti('wifi')}{ti('battery-3')}</span></div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function TabBar({ active = 'dash' }) {
-  const item = (key, icon, label) => (
-    <span className={`lp-tab${active === key ? ' on' : ''}`}>{ti(icon)}<em>{label}</em></span>
-  );
-  return (
-    <div className="lp-tabbar" aria-hidden="true">
-      {item('dash', 'layout-dashboard', 'Dashboard')}
-      {item('sales', 'receipt', 'Ventes')}
-      <span className="lp-tab-add">{ti('plus')}</span>
-      {item('ch', 'target-arrow', 'Challenges')}
-      {item('menu', 'menu-2', 'Menu')}
-    </div>
-  );
-}
-
-const BARS = [38, 52, 46, 64, 71, 92];
-function ScreenDashboard() {
-  return (
-    <div className="lp-scr">
-      <div className="lp-scr-top"><span>Bonjour <b>Awa</b></span><span className="lp-scr-avatar">AW</span></div>
-      <div className="lp-scr-hero">
-        <span>Bénéfice net · novembre</span>
-        <strong>172 300 F</strong>
-        <em>{ti('trending-up')} +14 % vs octobre</em>
-      </div>
-      <div className="lp-scr-kpis">
-        <div><span>Chiffre d'affaires</span><b>485 000 F</b></div>
-        <div><span>Ventes</span><b>38</b></div>
-      </div>
-      <div className="lp-scr-chart">
-        <span>Bénéfice · 6 mois</span>
-        <div className="lp-scr-bars">{BARS.map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</div>
-      </div>
-      <div className="lp-scr-row"><span className="lp-scr-dot">{ti('receipt')}</span><span><b>Robe wax</b><small>Fatou D. · reçu 0042</small></span><b>25 000 F</b></div>
-      <TabBar active="dash" />
-    </div>
-  );
-}
-
-function ScreenProducts() {
-  const rows = [['Robe wax', '14 000', '25 000', '11 000'], ['Sac en cuir', '9 000', '18 500', '9 500'], ['Ensemble bazin', '19 500', '32 000', '12 500']];
-  return (
-    <div className="lp-scr">
-      <div className="lp-scr-title">Produits <span className="lp-scr-btn">{ti('plus')} Ajouter</span></div>
-      {rows.map(([n, c, p, m]) => (
-        <div key={n} className="lp-scr-card">
-          <b>{n}</b>
-          <div className="lp-scr-cols"><span>Coût<b>{c} F</b></span><span>Prix<b>{p} F</b></span><span className="gold">Marge<b>{m} F</b></span></div>
+        <div className="lp-win-kpis">
+          <div><small>Chiffre d'affaires</small><b>485 000 F</b><em>+12 %</em></div>
+          <div className="gold"><small>Bénéfice net</small><b>172 300 F</b><em>+14 %</em></div>
+          <div><small>ROI des pubs</small><b>× 4,5</b><em>TikTok</em></div>
         </div>
-      ))}
-      <TabBar active="menu" />
-    </div>
-  );
-}
-
-function ScreenSale() {
-  return (
-    <div className="lp-scr">
-      <div className="lp-scr-title">Nouvelle vente</div>
-      <label className="lp-scr-field"><span>Produit</span><b>Robe wax · 25 000 F {ti('chevron-down')}</b></label>
-      <div className="lp-scr-2">
-        <label className="lp-scr-field"><span>Quantité</span><b>1</b></label>
-        <label className="lp-scr-field"><span>Livraison</span><b>1 500 F</b></label>
+        <div className="lp-win-chart">
+          <small>Bénéfice net · 6 mois</small>
+          <div className="lp-win-bars">
+            {BARS.map(([m, h]) => <span key={m}><i style={{ height: `${h}%` }} /><em>{m}</em></span>)}
+          </div>
+        </div>
+        <div className="lp-win-sales">
+          <div><span className="lp-win-ic">{ti('receipt')}</span><span>Robe wax <small>Fatou D.</small></span><b>+11 000 F</b></div>
+          <div><span className="lp-win-ic">{ti('receipt')}</span><span>Sac en cuir <small>Moussa K.</small></span><b>+9 500 F</b></div>
+        </div>
       </div>
-      <label className="lp-scr-field"><span>Client</span><b>Fatou Diop</b></label>
-      <label className="lp-scr-check">{ti('square-check')} Livraison payée par le client</label>
-      <div className="lp-scr-total"><span>Bénéfice de la vente</span><b>+11 000 F</b></div>
-      <span className="lp-scr-cta">Enregistrer la vente</span>
-      <TabBar active="sales" />
     </div>
   );
 }
 
-function ScreenReceipt() {
+function ReceiptTicket({ className = '' }) {
   return (
-    <div className="lp-scr lp-scr--receipt">
-      <div className="lp-scr-paper">
-        <div className="lp-scr-paper-head"><b>BOUTIQUE AWA</b><span>Reçu n° 0042</span></div>
-        <div className="lp-scr-paper-line"><span>Robe wax × 1</span><b>25 000 F</b></div>
-        <div className="lp-scr-paper-line"><span>Livraison</span><b>1 500 F</b></div>
-        <div className="lp-scr-paper-total"><span>Total payé</span><b>26 500 F</b></div>
-        <div className="lp-scr-paper-foot">Merci Fatou ! · Dakar, le 23/11</div>
+    <div className={`lp-ticket ${className}`} role="img" aria-label="Exemple de reçu Margee+ n° 0042, total 26 500 F, envoyé sur WhatsApp">
+      <div aria-hidden="true">
+        <div className="lp-ticket-head"><b>BOUTIQUE AWA</b><span>Reçu n° 0042 · 23/11</span></div>
+        <div className="lp-ticket-line"><span>Robe wax × 1</span><b>25 000 F</b></div>
+        <div className="lp-ticket-line"><span>Livraison</span><b>1 500 F</b></div>
+        <div className="lp-ticket-total"><span>TOTAL</span><b>26 500 F</b></div>
+        <div className="lp-ticket-sent">{ti('brand-whatsapp')} Envoyé à Fatou</div>
       </div>
-      <span className="lp-scr-share">{ti('brand-whatsapp')} Envoyer sur WhatsApp</span>
-      <span className="lp-scr-share lp-scr-share--ghost">{ti('download')} Télécharger le PDF</span>
-    </div>
-  );
-}
-
-function ScreenMargin() {
-  const rows = [['Chiffre d\'affaires', '485 000 F', ''], ['Coût de revient', '− 262 000 F', 'neg'], ['Pubs TikTok & Facebook', '− 38 500 F', 'neg'], ['Livraisons à ta charge', '− 12 200 F', 'neg']];
-  return (
-    <div className="lp-scr">
-      <div className="lp-scr-title">Ta vraie marge · novembre</div>
-      {rows.map(([l, v, c]) => <div key={l} className={`lp-scr-line ${c}`}><span>{l}</span><b>{v}</b></div>)}
-      <div className="lp-scr-net"><span>Bénéfice net</span><b>172 300 F</b><em>ROI des pubs : × 4,5</em></div>
-      <TabBar active="dash" />
-    </div>
-  );
-}
-
-function ScreenInvoice() {
-  return (
-    <div className="lp-scr">
-      <div className="lp-scr-title">Factures & devis</div>
-      <div className="lp-scr-doc"><span className="lp-scr-doc-tag">Facture</span><b>FAC-2026-0012</b><small>Hôtel Teranga · 12 ensembles bazin</small><div><b>384 000 F</b><em className="ok">Payée</em></div></div>
-      <div className="lp-scr-doc"><span className="lp-scr-doc-tag dev">Devis</span><b>DEV-2026-0007</b><small>Mariage Ndiaye · 30 tenues</small><div><b>960 000 F</b><em>Envoyé</em></div></div>
-      <span className="lp-scr-cta">{ti('file-plus')} Nouvelle facture</span>
-      <TabBar active="menu" />
     </div>
   );
 }
 
 /* ══ Contenus ═══════════════════════════════════════════════════ */
 const NAV = [
-  { href: '#pour-qui', label: 'Pour qui' },
-  { href: '#comment', label: 'Comment ça marche' },
+  { href: '#outils', label: 'Outils' },
+  { href: '#calculateur', label: 'Calculateur' },
   { href: '#tarifs', label: 'Tarifs' },
   { href: '#faq', label: 'FAQ' },
 ];
 
-const HERO_POINTS = ['Reçu PDF en 1 clic', 'Bénéfice net en temps réel', 'Factures et devis inclus', 'S\'installe sur ton téléphone'];
-
-const STATS = [
-  { n: '3', unit: '', text: 'reçus gratuits pour tester' },
-  { n: '1', unit: ' clic', text: 'pour un reçu PDF professionnel' },
-  { n: '7', unit: '', text: 'outils réunis dans une seule app' },
+const TICKER = [
+  'Robe wax · +11 000 F', 'Reçu n° 0042 envoyé', 'Sac en cuir · +9 500 F', 'Pub TikTok déduite · 5 000 F',
+  'Ensemble bazin · +12 500 F', 'Facture FAC-2026-0012 payée', 'Bénéfice du mois · 172 300 F', 'Devis DEV-2026-0007 envoyé',
 ];
 
-const PAY_MEANS = [
-  { name: 'Wave', icon: 'wave-sine' },
-  { name: 'Orange Money', icon: 'device-mobile' },
-  { name: 'Free Money', icon: 'device-mobile' },
-  { name: 'Carte bancaire', icon: 'credit-card' },
+const BEFORE = [
+  'Les ventes dans un cahier, sur WhatsApp ou dans la tête',
+  'Le coût de revient oublié, les pubs jamais déduites',
+  'Des reçus écrits à la main, ou pas de reçu du tout',
+  'Fin du mois : « je crois que j\'ai gagné… »',
 ];
-
-const PAINS = [
-  {
-    photo: 'quotidien', tone: 'warm', icon: 'notebook', caption: 'Cahier · WhatsApp · captures',
-    who: 'Dans ton quotidien', whoIcon: 'building-store',
-    list: ['Ventes notées dans un cahier ou sur WhatsApp', 'Coût de revient oublié dans le calcul', 'Pubs TikTok et Facebook jamais déduites', 'Livraisons payées de ta poche', 'Fin du mois : aucune idée du vrai bénéfice'],
-  },
-  {
-    photo: 'clients', tone: 'sand', icon: 'receipt-off', caption: 'Reçus écrits à la main',
-    who: 'Face à tes clients', whoIcon: 'users',
-    list: ['Reçus écrits à la main ou pas de reçu du tout', 'Factures et devis bricolés sur Word', 'Une image moins professionnelle que tes concurrents', 'Aucun historique de ce que chaque client a acheté'],
-  },
-];
-
-const EQUATION = [
-  { v: 'Chiffre d\'affaires', op: '' },
-  { v: 'Coût de revient', op: '−' },
-  { v: 'Pubs', op: '−' },
-  { v: 'Livraisons', op: '−' },
+const AFTER = [
+  'Chaque vente enregistrée en quelques secondes',
+  'Ta marge calculée : coût, pubs et livraisons compris',
+  'Un reçu PDF numéroté, prêt à envoyer sur WhatsApp',
+  'Fin du mois : ton bénéfice net exact, comparé au mois d\'avant',
 ];
 
 const STEPS = [
-  { n: '01', icon: 'package', title: 'Ajoute tes produits', text: 'Prix de vente et coût de revient : Margee+ calcule ta marge sur chaque article.', screen: <ScreenProducts />, label: 'Écran Produits : coût, prix et marge de chaque article' },
-  { n: '02', icon: 'shopping-cart', title: 'Enregistre une vente', text: 'Produit, quantité, client, livraison : quelques secondes depuis ton téléphone.', screen: <ScreenSale />, label: 'Écran Nouvelle vente avec le bénéfice calculé' },
-  { n: '03', icon: 'receipt', title: 'Le reçu part au client', text: 'Un reçu PDF numéroté, à ton nom, prêt à envoyer sur WhatsApp.', screen: <ScreenReceipt />, label: 'Reçu PDF numéroté prêt à être envoyé sur WhatsApp' },
-  { n: '04', icon: 'chart-pie', title: 'Lis ta vraie marge', text: 'Coût de revient, pubs et livraisons déduits : ton bénéfice net, en direct.', screen: <ScreenMargin />, label: 'Écran Ta vraie marge : bénéfice net après coûts, pubs et livraisons' },
+  { n: '01', icon: 'user-plus', title: 'Crée ton espace', text: 'Inscription gratuite en 2 minutes, depuis ton téléphone ou ton ordinateur.' },
+  { n: '02', icon: 'package', title: 'Ajoute tes produits', text: 'Prix de vente et coût de revient : ta marge par article est calculée.' },
+  { n: '03', icon: 'chart-arrows-vertical', title: 'Vends et pilote', text: 'Chaque vente génère un reçu et met à jour ton bénéfice net en direct.' },
 ];
 
-const DEMOS = {
-  reseaux: {
-    tab: 'Je vends sur les réseaux',
-    steps: [
-      { icon: 'package', t: 'Produit ajouté', s: 'Robe wax · marge 11 000 F' },
-      { icon: 'shopping-cart', t: 'Vente enregistrée', s: '25 000 F · Fatou D.' },
-      { icon: 'brand-whatsapp', t: 'Reçu envoyé', s: 'PDF n° 0042 sur WhatsApp' },
-      { icon: 'speakerphone', t: 'Pub déduite', s: 'Campagne TikTok · 5 000 F' },
-      { icon: 'chart-line', t: 'Bénéfice net', s: 'Mis à jour en direct' },
-    ],
-    note: 'De la commande au bénéfice net : tout se calcule pendant que tu vends.',
-  },
-  boutique: {
-    tab: 'J\'ai une boutique',
-    steps: [
-      { icon: 'file-description', t: 'Devis envoyé', s: 'DEV-2026-0007' },
-      { icon: 'file-check', t: 'Devis accepté', s: 'Converti en facture' },
-      { icon: 'cash', t: 'Facture payée', s: 'FAC-2026-0012 · payée' },
-      { icon: 'wallet', t: 'Dépense notée', s: 'Loyer de la boutique' },
-      { icon: 'layout-dashboard', t: 'Mois comparés', s: 'Octobre vs novembre' },
-    ],
-    note: 'Devis, factures, dépenses et investissements : ta boutique gérée comme une entreprise.',
-  },
-};
+const PROFILES = [
+  { icon: 'brand-tiktok', title: 'Tu vends en live et en story', text: 'TikTok, Instagram, statuts WhatsApp : enregistre la commande entre deux lives et envoie le reçu dans la foulée.' },
+  { icon: 'building-store', title: 'Tu as une boutique', text: 'Produits, dépenses du local, factures et devis pour tes clients professionnels : tout est au même endroit.' },
+  { icon: 'truck-delivery', title: 'Tu vends en gros ou tu importes', text: 'Suis tes investissements de stock et sache combien te rapporte chaque franc engagé.' },
+];
 
 const FAQ = [
   { q: 'Est-ce que je dois savoir faire de la comptabilité ?', a: 'Non. Tu saisis tes produits, tes ventes et tes dépenses : Margee+ fait tous les calculs à ta place, y compris ta vraie marge après pubs et livraisons.' },
@@ -355,136 +207,190 @@ function Hero() {
     <section className="lp-hero" aria-labelledby="lp-hero-title">
       <div className="lp-wrap lp-hero-grid">
         <div className="lp-hero-copy lp-reveal">
-          <span className="lp-pill">{ti('gift')} 3 reçus gratuits pour tester · sans engagement</span>
+          <span className="lp-mono lp-hero-kicker"><i />GÈRE · VENDS · SCALE</span>
           <h1 id="lp-hero-title" className="lp-h1">
-            Vends sur les réseaux.
-            <span className="lp-h1-accent">Connais ta vraie marge.</span>
+            Ton business <span className="lp-nowrap">e-commerce,</span> <mark>enfin clair.</mark>
           </h1>
           <p className="lp-hero-sub">
-            <b>Margee+ calcule ton bénéfice net à chaque vente</b>, coût de revient, pubs et livraisons compris,
-            et <b>envoie un reçu professionnel à ton client</b>. Fini le cahier, fini les calculs de tête.
+            Ventes, reçus, pubs, dépenses et factures dans une seule app. Margee+ calcule
+            ta <b>vraie marge</b> à chaque vente et t'envoie le reçu prêt à partager.
           </p>
-          <ul className="lp-hero-points">
-            {HERO_POINTS.map((p) => <li key={p}>{ti('circle-check')}{p}</li>)}
-          </ul>
           <div className="lp-hero-cta">
-            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--lg">Créer mon compte gratuit {ti('arrow-right')}</Link>
-            <Link to="/connexion" className="lp-btn lp-btn--ghost lp-btn--lg">Se connecter</Link>
+            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--lg">Démarrer gratuitement {ti('arrow-right')}</Link>
+            <Link to="/connexion" className="lp-btn lp-btn--outline lp-btn--lg">J'ai déjà un compte</Link>
           </div>
-          <InstallButton className="lp-textlink" label="Ou installe l'app sur ton téléphone" icon="ti-device-mobile-down" />
+          <ul className="lp-hero-trust">
+            <li>{ti('gift')}3 reçus offerts</li>
+            <li>{ti('device-mobile')}S'installe sur ton téléphone</li>
+            <li>{ti('wallet')}Wave · Orange Money · carte</li>
+          </ul>
         </div>
-
         <div className="lp-hero-visual lp-reveal lp-reveal--delay">
-          <Photo src={PHOTOS.hero} alt="E-commerçante qui gère ses ventes depuis son téléphone" tone="warm" icon="building-store" caption="Ta boutique, dans ta poche" className="lp-hero-photo" />
-          <Phone label="Exemple de tableau de bord Margee+ : bénéfice net 172 300 F en novembre" className="lp-hero-phone"><ScreenDashboard /></Phone>
-          <div className="lp-float lp-float--top" aria-hidden="true">
-            <span className="lp-float-icon">{ti('circle-check')}</span>
-            <span><small>Vente enregistrée</small><b>+25 000 F</b></span>
+          <DashboardWindow />
+          <ReceiptTicket className="lp-hero-ticket" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Ticker() {
+  const items = [...TICKER, ...TICKER];
+  return (
+    <div className="lp-ticker" aria-label="Exemples d'activité dans Margee+">
+      <ul className="lp-ticker-track">
+        {items.map((t, i) => <li key={i} aria-hidden={i >= TICKER.length}><span className="lp-ticker-dot" />{t}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function BeforeAfter() {
+  return (
+    <section className="lp-section" aria-labelledby="lp-ba-title">
+      <div className="lp-wrap">
+        <div className="lp-head lp-reveal">
+          <Label>Pourquoi Margee+</Label>
+          <h2 id="lp-ba-title" className="lp-h2">LE CAHIER, <span className="lp-gold">C'EST FINI.</span></h2>
+          <p className="lp-lead">Beaucoup d'e-commerçants vendent bien sans savoir ce qu'ils gagnent vraiment. Margee+ remplace le cahier, la calculette et les reçus faits à la main.</p>
+        </div>
+        <div className="lp-ba lp-reveal">
+          <div className="lp-ba-col lp-ba-col--before">
+            <div className="lp-ba-title"><span>{ti('notebook')}</span>Sans Margee+</div>
+            <ul>{BEFORE.map((b) => <li key={b}>{ti('x')}{b}</li>)}</ul>
           </div>
-          <div className="lp-float lp-float--bottom" aria-hidden="true">
-            <span className="lp-float-icon lp-float-icon--dark">{ti('brand-whatsapp')}</span>
-            <span><small>Reçu n° 0042</small><b>Envoyé à Fatou</b></span>
+          <div className="lp-ba-arrow" aria-hidden="true">{ti('arrow-right')}</div>
+          <div className="lp-ba-col lp-ba-col--after">
+            <div className="lp-ba-title"><span><img src="/margee-mark.svg" alt="" width="22" height="22" /></span>Avec Margee+</div>
+            <ul>{AFTER.map((a) => <li key={a}>{ti('check')}{a}</li>)}</ul>
           </div>
         </div>
       </div>
+    </section>
+  );
+}
 
+function Tools() {
+  return (
+    <section id="outils" className="lp-section lp-section--cream" aria-labelledby="lp-tools-title">
       <div className="lp-wrap">
-        <div className="lp-stats lp-reveal">
-          {STATS.map((s) => (
-            <div key={s.text} className="lp-stat">
-              <strong>{s.n}<span>{s.unit}</span></strong>
-              <span>{s.text}</span>
+        <div className="lp-head lp-reveal">
+          <Label>Les outils</Label>
+          <h2 id="lp-tools-title" className="lp-h2">TOUT TON BUSINESS, <span className="lp-gold">UNE SEULE APP.</span></h2>
+        </div>
+        <div className="lp-bento">
+          <article className="lp-tile lp-tile--marge lp-reveal">
+            <div className="lp-tile-copy">
+              <span className="lp-tile-ic">{ti('chart-pie')}</span>
+              <h3>Ta vraie marge, à chaque vente</h3>
+              <p>Coût de revient, pubs et livraisons sont déduits automatiquement. Tu vois ce qui reste vraiment dans ta poche.</p>
             </div>
-          ))}
-        </div>
-        <div className="lp-means lp-reveal">
-          <p>Paie ton abonnement avec le moyen que tu utilises déjà</p>
-          <ul>
-            {PAY_MEANS.map((m) => <li key={m.name}>{ti(m.icon)}{m.name}</li>)}
-          </ul>
-          <ul className="lp-means-sub">
-            <li>Prix en F CFA</li><li>Activation automatique</li><li>Paiement sécurisé</li>
-          </ul>
+            <div className="lp-calc-mini" aria-hidden="true">
+              <div><span>Chiffre d'affaires</span><b>485 000 F</b></div>
+              <div className="neg"><span>Coût de revient</span><b>− 262 000 F</b></div>
+              <div className="neg"><span>Pubs</span><b>− 38 500 F</b></div>
+              <div className="neg"><span>Livraisons</span><b>− 12 200 F</b></div>
+              <div className="net"><span>Bénéfice net</span><b>172 300 F</b></div>
+            </div>
+          </article>
+
+          <article className="lp-tile lp-tile--receipt lp-reveal">
+            <span className="lp-tile-ic">{ti('receipt')}</span>
+            <h3>Reçus PDF en 1 clic</h3>
+            <p>Numérotés, à ton logo et à tes couleurs, prêts pour WhatsApp.</p>
+            <ReceiptTicket className="lp-tile-ticket" />
+          </article>
+
+          <article className="lp-tile lp-reveal">
+            <span className="lp-tile-ic">{ti('speakerphone')}</span>
+            <h3>Pubs et ROI</h3>
+            <p>Chaque campagne TikTok ou Facebook comparée à ce qu'elle rapporte.</p>
+            <div className="lp-roi" aria-hidden="true"><span>ROI</span><b>× 4,5</b></div>
+          </article>
+
+          <article className="lp-tile lp-reveal">
+            <span className="lp-tile-ic">{ti('file-invoice')}</span>
+            <h3>Factures et devis</h3>
+            <p>Numérotation automatique, devis converti en facture en un clic.</p>
+            <div className="lp-docs" aria-hidden="true"><span>FAC-2026-0012 <em className="ok">Payée</em></span><span>DEV-2026-0007 <em>Envoyé</em></span></div>
+          </article>
+
+          <article className="lp-tile lp-reveal">
+            <span className="lp-tile-ic">{ti('wallet')}</span>
+            <h3>Dépenses et investissements</h3>
+            <p>Loyer, stock, matériel : tout est suivi, ton retour sur investissement aussi.</p>
+          </article>
+
+          <article className="lp-tile lp-tile--dark lp-tile--wide lp-reveal">
+            <div className="lp-tile-copy">
+              <span className="lp-tile-ic">{ti('device-mobile')}</span>
+              <h3>Une vraie app sur ton téléphone</h3>
+              <p>Margee+ s'installe sur ton écran d'accueil, sans store, et s'ouvre en plein écran.</p>
+            </div>
+            <InstallButton className="lp-btn lp-btn--gold" label="Installer l'app" icon="ti-device-mobile-down" />
+          </article>
+
+          <article className="lp-tile lp-tile--wide lp-reveal">
+            <div className="lp-tile-copy">
+              <span className="lp-tile-ic">{ti('target-arrow')}</span>
+              <h3>Objectifs, challenges et notes</h3>
+              <p>Fixe-toi un chiffre à atteindre, suis ta progression et garde tes idées et contacts fournisseurs au même endroit.</p>
+            </div>
+            <div className="lp-goal" aria-hidden="true"><span>Objectif de novembre</span><div><i style={{ width: '72%' }} /></div><b>72 %</b></div>
+          </article>
         </div>
       </div>
     </section>
   );
 }
 
-function Problem() {
+function Calculator() {
+  const [v, setV] = useState({ price: 25000, cost: 14000, ads: 2000, delivery: 1500, qty: 40 });
+  const r = useMemo(() => {
+    const n = (x) => Math.max(0, Number(x) || 0);
+    const unit = n(v.price) - n(v.cost) - n(v.ads) - n(v.delivery);
+    const pct = n(v.price) ? (unit / n(v.price)) * 100 : 0;
+    return { unit, pct, month: unit * n(v.qty) };
+  }, [v]);
+  const field = (key, label, hint) => (
+    <label className="lp-calc-field" htmlFor={`lp-calc-${key}`}>
+      <span>{label}</span>
+      <span className="lp-calc-input">
+        <input id={`lp-calc-${key}`} type="number" inputMode="numeric" min="0" step={key === 'qty' ? 1 : 500}
+          value={v[key]} onChange={(e) => setV({ ...v, [key]: e.target.value })} />
+        <em>{hint}</em>
+      </span>
+    </label>
+  );
+  const loss = r.unit < 0;
   return (
-    <section className="lp-section lp-section--tint" aria-labelledby="lp-pb-title">
+    <section id="calculateur" className="lp-section" aria-labelledby="lp-calc-title">
       <div className="lp-wrap">
         <div className="lp-head lp-reveal">
-          <span className="lp-label">Le problème</span>
-          <h2 id="lp-pb-title" className="lp-h2">Tu vends. Mais combien tu gagnes <em>vraiment&nbsp;?</em></h2>
+          <Label>Calculateur</Label>
+          <h2 id="lp-calc-title" className="lp-h2">ET TOI, <span className="lp-gold">TU GAGNES COMBIEN&nbsp;?</span></h2>
+          <p className="lp-lead">Entre les chiffres d'un de tes produits : tu vois tout de suite ce qu'il te rapporte vraiment. C'est ce calcul que Margee+ fait pour chaque vente.</p>
         </div>
-        <div className="lp-pains">
-          {PAINS.map((p) => (
-            <article key={p.who} className="lp-pain lp-reveal">
-              <Photo src={PHOTOS[p.photo]} alt={p.who} tone={p.tone} icon={p.icon} caption={p.caption} className="lp-pain-photo" />
-              <div className="lp-pain-body">
-                <div className="lp-pain-who"><span>{ti(p.whoIcon)}</span>{p.who}</div>
-                <ul>{p.list.map((l) => <li key={l}>{l}</li>)}</ul>
-              </div>
-            </article>
-          ))}
-        </div>
-        <div className="lp-equation lp-reveal" aria-label="Chiffre d'affaires moins coût de revient, moins pubs, moins livraisons, égale ta vraie marge">
-          {EQUATION.map((e) => (
-            <div key={e.v} className="lp-eq-item" aria-hidden="true">{e.op && <span className="lp-eq-op">{e.op}</span>}<span>{e.v}</span></div>
-          ))}
-          <div className="lp-eq-item lp-eq-result" aria-hidden="true"><span className="lp-eq-op">=</span><span>Ta vraie marge</span></div>
-          <p className="lp-eq-note">Le calcul que personne ne fait à la main. Margee+ le fait à chaque vente.</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Audience() {
-  return (
-    <section id="pour-qui" className="lp-section" aria-labelledby="lp-who-title">
-      <div className="lp-wrap">
-        <div className="lp-head lp-head--center lp-reveal">
-          <span className="lp-chip">Pour qui&nbsp;?</span>
-          <h2 id="lp-who-title" className="lp-h2">Pensé pour celles et ceux qui vendent <em>sur les réseaux.</em></h2>
-          <p className="lp-lead">Vendeuses TikTok, boutiques WhatsApp et Instagram, commerçants et grossistes : Margee+ remplace le cahier, la calculette et les reçus faits à la main.</p>
-        </div>
-
-        <div className="lp-row lp-reveal">
-          <div className="lp-row-visual">
-            <Photo src={PHOTOS.reseaux} alt="Vendeuse qui prépare une commande reçue sur les réseaux" tone="warm" icon="brand-tiktok" caption="Live, story, statut WhatsApp" className="lp-row-photo" />
-            <Phone label="Écran Nouvelle vente" className="lp-row-phone"><ScreenSale /></Phone>
-          </div>
-          <div className="lp-row-copy">
-            <span className="lp-label">Tu vends sur TikTok, WhatsApp, Instagram</span>
-            <h3 className="lp-h3">Encaisse, envoie le reçu, passe à la commande suivante.</h3>
-            <ul className="lp-checks">
-              <li>{ti('circle-check')}Une vente enregistrée en quelques secondes, depuis ton téléphone</li>
-              <li>{ti('circle-check')}Un reçu PDF numéroté envoyé à ton client sur WhatsApp</li>
-              <li>{ti('circle-check')}Tes pubs déduites : tu sais quelle campagne rapporte vraiment</li>
-              <li>{ti('circle-check')}Livraison payée par le client ou par toi : tout est compté</li>
-            </ul>
-            <Link to="/inscription" className="lp-btn lp-btn--gold">Créer mon espace {ti('arrow-right')}</Link>
-          </div>
-        </div>
-
-        <div className="lp-row lp-row--reverse lp-reveal">
-          <div className="lp-row-visual">
-            <Photo src={PHOTOS.boutique} alt="Gérant de boutique au comptoir avec sa tablette" tone="sand" icon="building-warehouse" caption="Boutique, atelier, vente en gros" className="lp-row-photo" />
-            <Phone label="Écran Factures et devis" className="lp-row-phone"><ScreenInvoice /></Phone>
-          </div>
-          <div className="lp-row-copy">
-            <span className="lp-label">Tu as une boutique ou tu vends en gros</span>
-            <h3 className="lp-h3">Pilote tes produits et tes chiffres comme une entreprise.</h3>
-            <ul className="lp-checks">
-              <li>{ti('circle-check')}Coût de revient et marge calculés pour chaque produit</li>
-              <li>{ti('circle-check')}Factures et devis numérotés, à ton logo et à tes couleurs</li>
-              <li>{ti('circle-check')}Dépenses et investissements suivis, ROI calculé pour toi</li>
-              <li>{ti('circle-check')}Tes mois comparés d'un coup d'œil sur ton tableau de bord</li>
-            </ul>
-            <a href="#comment" className="lp-btn lp-btn--dark">Voir comment ça marche {ti('arrow-down')}</a>
+        <div className="lp-calc lp-reveal">
+          <form className="lp-calc-form" onSubmit={(e) => e.preventDefault()}>
+            {field('price', 'Prix de vente', 'F')}
+            {field('cost', 'Coût de revient', 'F')}
+            {field('ads', 'Pub par vente', 'F')}
+            {field('delivery', 'Livraison à ta charge', 'F')}
+            {field('qty', 'Ventes par mois', 'ventes')}
+          </form>
+          <div className={`lp-calc-result${loss ? ' is-loss' : ''}`} aria-live="polite">
+            <span className="lp-mono">Ta vraie marge</span>
+            <strong>{loss ? '− ' : ''}{money(Math.abs(r.unit))} F <small>par vente</small></strong>
+            <div className="lp-calc-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, r.pct))}%` }} /></div>
+            <dl>
+              <div><dt>Marge nette</dt><dd>{r.pct.toFixed(0).replace('-0', '0')} %</dd></div>
+              <div><dt>Bénéfice sur le mois</dt><dd>{loss ? '− ' : ''}{money(Math.abs(r.month))} F</dd></div>
+            </dl>
+            <p>{loss
+              ? 'Attention : à ce prix, chaque vente te fait perdre de l\'argent. Margee+ te le signale avant qu\'il ne soit trop tard.'
+              : 'Margee+ fait ce calcul à chaque vente, avec tes vrais chiffres, et l\'additionne sur le mois.'}</p>
+            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--block">Suivre ma marge avec Margee+ {ti('arrow-right')}</Link>
           </div>
         </div>
       </div>
@@ -492,27 +398,21 @@ function Audience() {
   );
 }
 
-function HowItWorks() {
+function Steps() {
   return (
-    <section id="comment" className="lp-section lp-section--tint" aria-labelledby="lp-how-title">
+    <section id="demarrer" className="lp-section lp-section--ink" aria-labelledby="lp-steps-title">
       <div className="lp-wrap">
         <div className="lp-head lp-reveal">
-          <span className="lp-label">Comment ça marche</span>
-          <h2 id="lp-how-title" className="lp-h2">Quatre étapes. <em>Zéro calcul.</em></h2>
-          <p className="lp-lead">Le même parcours simple pour chaque vente, depuis ton téléphone ou ton ordinateur.</p>
+          <Label light>Démarrer</Label>
+          <h2 id="lp-steps-title" className="lp-h2">PRÊT EN <span className="lp-gold">3 ÉTAPES.</span></h2>
         </div>
-        <ol className="lp-timeline">
-          {STEPS.map((s, i) => (
-            <li key={s.n} className={`lp-tl-step lp-reveal${i % 2 ? ' lp-tl-step--alt' : ''}`}>
-              <div className="lp-tl-copy">
-                <span className="lp-tl-tag">{ti(s.icon)} Étape {s.n}</span>
-                <h3 className="lp-h3">{s.title}</h3>
-                <p>{s.text}</p>
-              </div>
-              <span className="lp-tl-node" aria-hidden="true">{s.n}</span>
-              <div className="lp-tl-visual">
-                <Phone label={s.label} className="lp-tl-phone">{s.screen}</Phone>
-              </div>
+        <ol className="lp-steps">
+          {STEPS.map((s) => (
+            <li key={s.n} className="lp-step lp-reveal">
+              <span className="lp-step-n" aria-hidden="true">{s.n}</span>
+              <span className="lp-step-ic">{ti(s.icon)}</span>
+              <h3>{s.title}</h3>
+              <p>{s.text}</p>
             </li>
           ))}
         </ol>
@@ -521,49 +421,23 @@ function HowItWorks() {
   );
 }
 
-function Demo() {
-  const [track, setTrack] = useState('reseaux');
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const steps = DEMOS[track].steps;
-
-  useEffect(() => {
-    if (paused || reduce) return undefined;
-    const t = setTimeout(() => setActive((a) => (a + 1) % steps.length), 2600);
-    return () => clearTimeout(t);
-  }, [active, paused, reduce, steps.length]);
-
-  const choose = (k) => { setTrack(k); setActive(0); };
-
+function Profiles() {
   return (
-    <section id="demo" className="lp-section lp-section--tint lp-demo" aria-labelledby="lp-demo-title"
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+    <section id="pour-qui" className="lp-section" aria-labelledby="lp-who-title">
       <div className="lp-wrap">
         <div className="lp-head lp-reveal">
-          <span className="lp-label">Démo</span>
-          <h2 id="lp-demo-title" className="lp-h2">Vis le parcours, <em>en 10 secondes.</em></h2>
+          <Label>Pour qui</Label>
+          <h2 id="lp-who-title" className="lp-h2">FAIT POUR LES <span className="lp-gold"><span className="lp-nowrap">E-COMMERÇANTS</span> D'ICI.</span></h2>
+          <p className="lp-lead">Prix en F CFA, paiement mobile money, reçus à envoyer sur WhatsApp : Margee+ est pensé pour la façon dont on vend en Afrique francophone.</p>
         </div>
-        <div className="lp-reveal">
-          <div className="lp-switch" role="tablist" aria-label="Type d'activité">
-            {Object.entries(DEMOS).map(([k, d]) => (
-              <button key={k} type="button" role="tab" aria-selected={track === k} className={track === k ? 'on' : ''} onClick={() => choose(k)}>{d.tab}</button>
-            ))}
-          </div>
-          <ol className="lp-demo-steps">
-            {steps.map((s, i) => (
-              <li key={`${track}-${s.t}`}>
-                <button type="button" className={`lp-demo-card${i === active ? ' on' : ''}${i < active ? ' done' : ''}`} onClick={() => setActive(i)} aria-current={i === active ? 'step' : undefined}>
-                  <span className="lp-demo-top"><span className="lp-demo-icon">{ti(i < active ? 'check' : s.icon)}</span><span className="lp-demo-n">0{i + 1}</span></span>
-                  <b>{s.t}</b>
-                  <small>{s.s}</small>
-                  {i === active && !reduce && !paused && <span className="lp-demo-progress" />}
-                </button>
-              </li>
-            ))}
-          </ol>
-          <p className="lp-demo-note">{DEMOS[track].note}</p>
+        <div className="lp-profiles">
+          {PROFILES.map((p) => (
+            <article key={p.title} className="lp-profile lp-reveal">
+              <span className="lp-profile-ic">{ti(p.icon)}</span>
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -575,11 +449,11 @@ function Pricing() {
   const { plans, annualMonths } = usePlans();
   const freeMonths = 12 - annualMonths;
   return (
-    <section id="tarifs" className="lp-section lp-section--dark" aria-labelledby="lp-tarifs-title">
+    <section id="tarifs" className="lp-section lp-section--cream" aria-labelledby="lp-tarifs-title">
       <div className="lp-wrap">
         <div className="lp-head lp-head--center lp-reveal">
-          <span className="lp-chip lp-chip--dark">Tarifs</span>
-          <h2 id="lp-tarifs-title" className="lp-h2">Un prix simple, <em>en F CFA.</em></h2>
+          <Label>Tarifs</Label>
+          <h2 id="lp-tarifs-title" className="lp-h2">DES PRIX <span className="lp-gold">EN F CFA.</span></h2>
           <p className="lp-lead">Commence gratuitement, passe à la vitesse supérieure quand ton business décolle.</p>
           <div className="lp-toggle" role="group" aria-label="Période de facturation">
             <button type="button" aria-pressed={!yearly} className={!yearly ? 'on' : ''} onClick={() => setYearly(false)}>Mensuel</button>
@@ -593,11 +467,7 @@ function Pricing() {
             <PlanCard key={key} planKey={key} plan={plan} yearly={yearly} annualMonths={annualMonths} />
           ))}
         </div>
-        <ul className="lp-pricing-notes lp-reveal">
-          <li>{ti('shield-check')}Paiement sécurisé Wave, Orange Money ou carte</li>
-          <li>{ti('bolt')}Abonnement activé automatiquement</li>
-          <li>{ti('lock')}Tes données restent privées</li>
-        </ul>
+        <p className="lp-pricing-note lp-reveal">{ti('shield-check')} Paiement sécurisé par Wave, Orange Money ou carte · abonnement activé automatiquement</p>
       </div>
     </section>
   );
@@ -607,11 +477,10 @@ function Faq() {
   const [open, setOpen] = useState(0);
   return (
     <section id="faq" className="lp-section" aria-labelledby="lp-faq-title">
-      <div className="lp-wrap lp-faq-grid">
-        <div className="lp-faq-side lp-reveal">
-          <span className="lp-label">FAQ</span>
-          <h2 id="lp-faq-title" className="lp-h2">On te dit <em>tout.</em></h2>
-          <p className="lp-lead">Une question qui n'est pas listée&nbsp;? Écris à l'équipe depuis ton espace : on te répond directement dans l'app.</p>
+      <div className="lp-wrap lp-wrap--narrow">
+        <div className="lp-head lp-head--center lp-reveal">
+          <Label>FAQ</Label>
+          <h2 id="lp-faq-title" className="lp-h2">QUESTIONS <span className="lp-gold">FRÉQUENTES.</span></h2>
         </div>
         <div className="lp-faq lp-reveal">
           {FAQ.map((item, i) => {
@@ -620,8 +489,9 @@ function Faq() {
               <div key={item.q} className={`lp-faq-item${isOpen ? ' open' : ''}`}>
                 <h3>
                   <button type="button" id={`lp-faq-q${i}`} aria-expanded={isOpen} aria-controls={`lp-faq-a${i}`} onClick={() => setOpen(isOpen ? -1 : i)}>
-                    <span>{item.q}</span>
-                    <span className="lp-faq-sign">{ti(isOpen ? 'minus' : 'plus')}</span>
+                    <span className="lp-faq-n lp-mono" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                    <span className="lp-faq-q">{item.q}</span>
+                    <span className="lp-faq-sign">{ti('chevron-down')}</span>
                   </button>
                 </h3>
                 <div id={`lp-faq-a${i}`} role="region" aria-labelledby={`lp-faq-q${i}`} className="lp-faq-a" hidden={!isOpen}>
@@ -638,22 +508,16 @@ function Faq() {
 
 function FinalCta() {
   return (
-    <section className="lp-section lp-final" aria-labelledby="lp-final-title">
-      <div className="lp-wrap lp-final-grid">
-        <div className="lp-final-copy lp-reveal">
-          <Logo />
-          <h2 id="lp-final-title" className="lp-h1 lp-final-title">
-            Vends sur les réseaux.
-            <span className="lp-h1-accent">Connais ta vraie marge.</span>
-          </h2>
-          <p className="lp-lead">Crée ton espace en quelques minutes et enregistre ta première vente aujourd'hui. Inscription gratuite, sans engagement.</p>
-          <div className="lp-hero-cta">
-            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--lg">Créer mon compte gratuit {ti('arrow-right')}</Link>
-            <Link to="/connexion" className="lp-btn lp-btn--ghost lp-btn--lg">Se connecter</Link>
+    <section className="lp-section lp-section--tight" aria-labelledby="lp-final-title">
+      <div className="lp-wrap">
+        <div className="lp-final lp-reveal">
+          <img src="/margee-mark.svg" alt="" width="64" height="64" className="lp-final-mark" />
+          <h2 id="lp-final-title" className="lp-final-title">PRÊT À CONNAÎTRE TA VRAIE MARGE&nbsp;?</h2>
+          <p>Crée ton espace en 2 minutes et enregistre ta première vente aujourd'hui.</p>
+          <div className="lp-final-cta">
+            <Link to="/inscription" className="lp-btn lp-btn--dark lp-btn--lg">Créer mon compte gratuit {ti('arrow-right')}</Link>
+            <Link to="/connexion" className="lp-btn lp-btn--line lp-btn--lg">Se connecter</Link>
           </div>
-        </div>
-        <div className="lp-final-visual lp-reveal lp-reveal--delay">
-          <Photo src={PHOTOS.final} alt="E-commerçante souriante qui prépare un colis" tone="warm" icon="heart-handshake" caption="Prête pour la prochaine commande" className="lp-final-photo" />
         </div>
       </div>
     </section>
@@ -671,13 +535,13 @@ function Footer() {
       <div className="lp-wrap">
         <div className="lp-footer-grid">
           <div className="lp-footer-brand">
-            <Logo light />
+            <Logo dark />
             <p>La gestion simple et claire des e-commerçants d'Afrique francophone : ventes, reçus, marge et ROI au même endroit.</p>
           </div>
-          <nav className="lp-footer-col" aria-label="Produit">
-            <h2 className="lp-footer-title">Produit</h2>
+          <nav className="lp-footer-col" aria-label="Découvrir">
+            <h2 className="lp-footer-title">Découvrir</h2>
             {NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}
-            <a href="#demo">Démo</a>
+            <a href="#pour-qui">Pour qui</a>
           </nav>
           <nav className="lp-footer-col" aria-label="Ton compte">
             <h2 className="lp-footer-title">Ton compte</h2>
@@ -694,12 +558,10 @@ function Footer() {
             </ul>
           </div>
         </div>
-        <div className="lp-footer-means">
-          {PAY_MEANS.map((m) => <span key={m.name}>{m.name}</span>)}
-        </div>
+        <div className="lp-footer-word" aria-hidden="true">MARGEE+</div>
         <div className="lp-footer-bottom">
           <span>© 2026 Margee+ · OLELE Systems</span>
-          <span className="lp-mono">MEUN NA NEK</span>
+          <span className="lp-mono lp-footer-motto">MEUN NA NEK</span>
           <button type="button" className="lp-footer-top" onClick={toTop}>Retour en haut {ti('arrow-up')}</button>
         </div>
       </div>
@@ -711,7 +573,6 @@ function Footer() {
 export default function Landing() {
   const rootRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   useReveal(rootRef);
 
   useEffect(() => {
@@ -721,26 +582,19 @@ export default function Landing() {
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   return (
     <div className="lp" ref={rootRef}>
       <a href="#lp-main" className="lp-skip">Aller au contenu</a>
 
-      <header className={`lp-header${scrolled ? ' is-scrolled' : ''}`}>
+      <header className="lp-header">
         <div className="lp-wrap lp-header-inner">
-          <Logo />
+          <Logo dark />
           <nav className="lp-nav" aria-label="Navigation principale">
             {NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}
           </nav>
           <div className="lp-header-cta">
-            <Link to="/connexion" className="lp-btn lp-btn--text lp-btn--sm">Connexion</Link>
-            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--sm">Créer un compte</Link>
+            <Link to="/connexion" className="lp-btn lp-btn--outline lp-btn--sm">Se connecter</Link>
+            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--sm">Démarrer</Link>
           </div>
           {/* Mobile : bouton discret, tant que l'app n'est pas installée */}
           <InstallButton className="lp-install" />
@@ -758,18 +612,20 @@ export default function Landing() {
         <div id="lp-mobile-menu" className={`lp-mobile-menu${menuOpen ? ' open' : ''}`} hidden={!menuOpen}>
           {NAV.map((n) => <a key={n.href} href={n.href} onClick={() => setMenuOpen(false)}>{n.label}</a>)}
           <div className="lp-mobile-cta">
-            <Link to="/connexion" className="lp-btn lp-btn--ghost lp-btn--block">Se connecter</Link>
-            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--block">Créer un compte</Link>
+            <Link to="/connexion" className="lp-btn lp-btn--outline lp-btn--block">Se connecter</Link>
+            <Link to="/inscription" className="lp-btn lp-btn--gold lp-btn--block">Démarrer</Link>
           </div>
         </div>
       </header>
 
       <main id="lp-main">
         <Hero />
-        <Problem />
-        <Audience />
-        <HowItWorks />
-        <Demo />
+        <Ticker />
+        <BeforeAfter />
+        <Tools />
+        <Calculator />
+        <Steps />
+        <Profiles />
         <Pricing />
         <Faq />
         <FinalCta />
