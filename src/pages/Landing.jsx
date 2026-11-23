@@ -560,7 +560,7 @@ function Footer() {
         </div>
         <div className="lp-footer-word" aria-hidden="true">MARGEE+</div>
         <div className="lp-footer-bottom">
-          <span>© 2026 Margee+ · OLELE Systems</span>
+          <span>© 2026 Margee+</span>
           <span className="lp-mono lp-footer-motto">MEUN NA NEK</span>
           <button type="button" className="lp-footer-top" onClick={toTop}>Retour en haut {ti('arrow-up')}</button>
         </div>
