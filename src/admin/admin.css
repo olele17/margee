@@ -395,3 +395,9 @@
   .adm-msg-back { display: inline-flex; }
   .adm-msg { max-width: 90%; }
 }
+
+/* ── Invitation d'un e-commerçant ─────────────────────────────── */
+.adm-head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.adm-head-actions .adm-invite-link { flex-basis: 100%; text-align: left; }
+.adm-im-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .adm-im-row { grid-template-columns: 1fr; } }

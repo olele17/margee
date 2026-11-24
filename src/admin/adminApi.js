@@ -291,6 +291,17 @@ export function inviteTeamMember(email, role, mode, reason) {
   }, 'Invitation impossible. Réessaie.');
 }
 
+/**
+ * Invitation d'un e-commerçant avec un plan offert (super admin) :
+ * plan 'free' | 'pro' | 'elite', days parmi 7, 14, 30, 60, 90, 180, 365.
+ */
+export function inviteMerchant({ email, businessName, plan, days, mode, reason }) {
+  return callAdminActions({
+    action: 'invite_merchant', email, business_name: businessName, plan, days, mode, reason,
+    redirect_to: `${window.location.origin}/reinitialiser-mot-de-passe?invitation=boutique`,
+  }, 'Invitation impossible. Réessaie.');
+}
+
 // ── JOURNAL D'ACTIVITÉ (tout admin) ──────────────────────────────
 export async function listAudit({ admin = '', action = '', account = '', from = '', to = '', search = '', page = 1, pageSize = 50 } = {}) {
   const { data, error } = await sb().rpc('admin_list_audit', {

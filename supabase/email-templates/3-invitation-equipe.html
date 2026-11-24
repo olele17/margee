@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Bienvenue dans l'équipe</title>
+<title>{{ if .Data.invite_note }}Bienvenue sur Margee+{{ else }}Bienvenue dans l'équipe{{ end }}</title>
 </head>
 <body style="margin:0;padding:0;background:#FAF7F0;">
-<span style="display:none;font-size:1px;color:#FAF7F0;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Rejoins l'espace d'administration de Margee+.</span>
+<span style="display:none;font-size:1px;color:#FAF7F0;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Accepte ton invitation et choisis ton mot de passe.</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F0;">
   <tr>
     <td align="center" style="padding:32px 16px;">
@@ -27,8 +27,9 @@
         </tr>
         <tr>
           <td style="background:#FFFFFF;padding:32px 28px 28px;border-left:1px solid #ECE5D6;border-right:1px solid #ECE5D6;font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;color:#14161C;">
-            <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;font-weight:800;color:#14161C;">Bienvenue dans l'équipe</h1>
-            <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#2B2E36;">Tu as été invité(e) à rejoindre l'espace d'administration de Margee+.</p>
+            <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;font-weight:800;color:#14161C;">{{ if .Data.invite_note }}Bienvenue sur Margee+{{ else }}Bienvenue dans l'équipe{{ end }}</h1>
+            <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#2B2E36;">{{ if .Data.invite_note }}Tu as été invité(e) à créer ton espace sur Margee+, l'app qui calcule ta vraie marge et envoie tes reçus.{{ else }}Tu as été invité(e) à rejoindre l'espace d'administration de Margee+.{{ end }}</p>
+            <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#2B2E36;">{{ if .Data.invite_note }}<strong>{{ .Data.invite_note }}</strong>{{ else }}Ton accès est prêt.{{ end }}</p>
             <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#2B2E36;">Clique sur le bouton pour accepter l'invitation, puis choisis ton mot de passe.</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 8px;">
               <tr>
@@ -43,7 +44,7 @@
         </tr>
         <tr>
           <td style="background:#FFFFFF;border:1px solid #ECE5D6;border-top:0;border-radius:0 0 16px 16px;padding:18px 28px 22px;font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
-            <p style="margin:0;font-size:13px;line-height:1.6;color:#5B6170;">Tu ne t'attendais pas à cette invitation ? Ignore cet e-mail, aucun accès ne sera créé.</p>
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#5B6170;">Tu ne t'attendais pas à cette invitation ? Ignore cet e-mail, aucun accès ne sera activé.</p>
           </td>
         </tr>
         <tr>

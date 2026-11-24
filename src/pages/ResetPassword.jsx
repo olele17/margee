@@ -13,8 +13,10 @@ import AuthShell from '../components/AuthShell';
 export default function ResetPassword() {
   const { refresh } = useAuth();
   const navigate = useNavigate();
-  // Lien d'invitation d'un membre de l'équipe (/admin/parametres)
-  const invitation = useSearchParams()[0].get('invitation') === '1';
+  // Lien d'invitation : membre de l'équipe (=1) ou e-commerçant (=boutique)
+  const invParam = useSearchParams()[0].get('invitation');
+  const invitation = invParam === '1';
+  const shopInvite = invParam === 'boutique';
   const [status, setStatus] = useState('checking'); // checking | ready | invalid
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -65,7 +67,7 @@ export default function ResetPassword() {
 
   if (status === 'invalid') {
     return (
-      <AuthShell label={invitation ? "Invitation" : "Nouveau mot de passe"} title="Lien invalide ou expiré" subtitle={invitation ? "Ce lien d'invitation a déjà servi ou a expiré. Demande une nouvelle invitation au super admin." : "Les liens de réinitialisation ne servent qu'une fois et expirent après une heure."}>
+      <AuthShell label={invitation || shopInvite ? "Invitation" : "Nouveau mot de passe"} title="Lien invalide ou expiré" subtitle={invitation ? "Ce lien d'invitation a déjà servi ou a expiré. Demande une nouvelle invitation au super admin." : shopInvite ? "Ce lien d'invitation a déjà servi ou a expiré. Demande un nouveau lien à l'équipe Margee+, ou utilise « mot de passe oublié » avec ton adresse." : "Les liens de réinitialisation ne servent qu'une fois et expirent après une heure."}>
         <Link to="/mot-de-passe-oublie" className="au-btn au-btn--gold">Demander un nouveau lien</Link>
         <div className="au-switch"><Link to="/connexion">Retour à la connexion</Link></div>
       </AuthShell>
@@ -73,7 +75,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthShell label={invitation ? "Équipe Margee+" : "Nouveau mot de passe"} title={invitation ? "Bienvenue dans l'équipe" : "Choisis ton nouveau mot de passe"} subtitle={invitation ? "Choisis ton mot de passe pour accéder à l'espace admin (8 caractères minimum)." : "8 caractères minimum."}>
+    <AuthShell label={invitation ? "Équipe Margee+" : shopInvite ? "Invitation" : "Nouveau mot de passe"} title={invitation ? "Bienvenue dans l'équipe" : shopInvite ? "Bienvenue sur Margee+" : "Choisis ton nouveau mot de passe"} subtitle={invitation ? "Choisis ton mot de passe pour accéder à l'espace admin (8 caractères minimum)." : shopInvite ? "Choisis ton mot de passe pour accéder à ton espace (8 caractères minimum)." : "8 caractères minimum."}>
       <form className="au-form" onSubmit={submit} noValidate>
         <div className="au-field">
           <label htmlFor="rp-password">Nouveau mot de passe</label>

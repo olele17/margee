@@ -7,6 +7,8 @@
 //                                   mais anonymisés (account_id → null)
 //   invite_admin    (super_admin) : invite un membre de l'équipe (email
 //                                   envoyé par Supabase, ou lien à partager)
+//   invite_merchant (super_admin) : invite un e-commerçant avec un plan
+//                                   offert (Free, Pro ou Elite, durée choisie)
 //
 // La clé service_role vient de l'environnement Supabase
 // (SUPABASE_SERVICE_ROLE_KEY) : elle n'est jamais envoyée au navigateur.
@@ -126,6 +128,76 @@ Deno.serve(async (req) => {
       account_id: userId, before: null, after: { email, role, mode }, reason,
     });
     return reply(200, { ok: true, user_id: userId, email, role, mode, ...(link ? { link } : {}) });
+  }
+
+  // ── Invitation d'un e-commerçant avec un plan offert ────────────
+  // L'invitation est inscrite dans merchant_invitations (clé service_role) :
+  // à la création du compte, la base active directement le plan choisi.
+  if (action === 'invite_merchant') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const plan = String(body.plan || '');
+    const days = Number(body.days);
+    const mode = body.mode === 'link' ? 'link' : 'email';
+    const business = String(body.business_name || '').trim().slice(0, 120);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return fail(400, 'Adresse email invalide.');
+    if (!['free', 'pro', 'elite'].includes(plan)) return fail(400, 'Plan invalide.');
+    if (![7, 14, 30, 60, 90, 180, 365].includes(days)) return fail(400, 'Durée invalide.');
+    const redirectTo = typeof body.redirect_to === 'string' && /^https?:\/\/[^\s]+\/reinitialiser-mot-de-passe\?invitation=boutique$/.test(body.redirect_to)
+      ? body.redirect_to : undefined;
+
+    const { data: existing } = await db.from('profiles').select('id').eq('email', email).maybeSingle();
+    if (existing) return fail(409, 'Cet email a déjà un compte Margee+. Pour lui offrir un plan, ouvre sa fiche et change son plan.');
+
+    const { data: planRow } = await db.from('plans').select('name').eq('id', plan).maybeSingle();
+    const planName = planRow?.name || plan;
+    const duration = days === 365 ? '1 an' : days % 30 === 0 ? `${days / 30} mois` : `${days} jours`;
+    const note = plan === 'free'
+      ? `Ton essai gratuit dure ${duration}.`
+      : `Ton plan ${planName} est offert pendant ${duration}.`;
+
+    const { error: invErr } = await db.from('merchant_invitations').upsert({
+      email, plan_id: plan, days, invited_by: caller.id,
+      created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    if (invErr) { console.error('merchant_invitations', invErr.message); return fail(500, 'Invitation impossible. Réessaie.'); }
+    const clearInvitation = () => db.from('merchant_invitations').delete().eq('email', email);
+
+    const meta: Record<string, string> = { invite_note: note };
+    if (business) meta.business_name = business;
+    let userId: string | undefined;
+    let link: string | undefined;
+    if (mode === 'link') {
+      const { data, error } = await db.auth.admin.generateLink({ type: 'invite', email, options: { data: meta, redirectTo } });
+      if (error) {
+        console.error('generateLink', error.message);
+        await clearInvitation();
+        return fail(502, /already|registered|exists/i.test(error.message) ? 'Cet email a déjà un compte.' : 'Lien d\'invitation impossible à créer. Réessaie.');
+      }
+      userId = data.user?.id;
+      link = data.properties?.action_link;
+    } else {
+      const { data, error } = await db.auth.admin.inviteUserByEmail(email, { data: meta, redirectTo });
+      if (error) {
+        console.error('inviteUserByEmail', error.message);
+        await clearInvitation();
+        const msg = /rate|limit|seconds/i.test(error.message)
+          ? 'Trop d\'emails envoyés : réessaie plus tard, ou crée un lien à partager.'
+          : /already|registered|exists/i.test(error.message)
+            ? 'Cet email a déjà un compte.'
+            : 'Email d\'invitation non envoyé. Crée plutôt un lien à partager.';
+        return fail(502, msg);
+      }
+      userId = data.user?.id;
+    }
+    await clearInvitation();
+    if (!userId) return fail(500, 'Invitation impossible. Réessaie.');
+
+    const { data: sub } = await db.from('subscriptions').select('plan_id, status, expires_at, trial_ends_at').eq('account_id', userId).maybeSingle();
+    await db.from('admin_audit_log').insert({
+      admin_id: caller.id, admin_email: caller.email, action: 'merchant.invite',
+      account_id: userId, before: null, after: { email, plan, days, mode, subscription: sub ?? null }, reason,
+    });
+    return reply(200, { ok: true, user_id: userId, email, plan, days, mode, note, ...(link ? { link } : {}) });
   }
 
   const accountId = String(body.account_id || '');

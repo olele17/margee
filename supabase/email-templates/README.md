@@ -7,7 +7,7 @@ Pour chaque modèle : copier l'**objet** dans *Subject*, et tout le contenu du f
 |---|---|---|
 | Confirm signup | Confirme ton adresse e-mail · Margee+ | 1-confirmation-inscription.html |
 | Reset password | Réinitialise ton mot de passe · Margee+ | 2-mot-de-passe-oublie.html |
-| Invite user | Tu es invité(e) dans l'équipe Margee+ | 3-invitation-equipe.html |
+| Invite user | Ton invitation sur Margee+ | 3-invitation-equipe.html |
 | Change email address | Confirme ta nouvelle adresse e-mail · Margee+ | 4-changement-adresse.html |
 | Magic link | Ton lien de connexion · Margee+ | 5-lien-de-connexion.html |
 

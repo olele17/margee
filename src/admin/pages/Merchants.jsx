@@ -6,6 +6,7 @@ import { can } from '../permissions';
 import { num, dateFr, PLAN_LABELS } from '../format';
 import { SubscriptionBadge, SUBSCRIPTION_STATUSES } from '../components/StatusBadge';
 import { downloadCsv } from '../csv';
+import InviteMerchant from '../components/InviteMerchant';
 import '../../styles/dashboard.css';
 
 const PAGE_SIZE = 25;
@@ -45,6 +46,7 @@ export default function Merchants() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0); // après une invitation
 
   const update = (patch, resetPage = true) => {
     const next = new URLSearchParams(params);
@@ -74,7 +76,7 @@ export default function Merchants() {
       .catch((e) => { if (alive) setErr(e.message); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [filters]);
+  }, [filters, reloadKey]);
 
   const total = Number(data?.total || 0);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -114,11 +116,14 @@ export default function Merchants() {
             {loading && !data ? 'Chargement…' : `${num(total)} compte${total > 1 ? 's' : ''}${hasFilters ? ' correspondant aux filtres' : ''}`}
           </div>
         </div>
-        {can(role, 'merchants.export') && (
-          <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={exporting || total === 0}>
-            <i className={`ti ${exporting ? 'ti-loader-2 adm-spin' : 'ti-file-download'}`} aria-hidden="true" /> Exporter en CSV
-          </button>
-        )}
+        <div className="adm-head-actions">
+          {can(role, 'merchants.export') && (
+            <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={exporting || total === 0}>
+              <i className={`ti ${exporting ? 'ti-loader-2 adm-spin' : 'ti-file-download'}`} aria-hidden="true" /> Exporter en CSV
+            </button>
+          )}
+          {can(role, 'merchants.invite') && <InviteMerchant onDone={() => setReloadKey((k) => k + 1)} />}
+        </div>
       </div>
 
       <div className="db-card adm-filters" role="search">

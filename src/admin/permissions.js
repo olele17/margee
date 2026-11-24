@@ -31,6 +31,7 @@ const RULES = {
   'merchants.extend': BOTH,         // prolonger un essai / un abonnement
   'merchants.suspend': SUPER,       // suspendre / réactiver
   'merchants.changePlan': SUPER,
+  'merchants.invite': SUPER,        // inviter un e-commerçant avec un plan offert
   'merchants.resetPassword': SUPER,
   'merchants.delete': SUPER,
   'merchants.export': BOTH,
