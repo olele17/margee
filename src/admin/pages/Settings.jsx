@@ -9,6 +9,7 @@ import { dateFr, dateTimeFr } from '../format';
 import ActionDialog from '../components/ActionDialog';
 import { reloadPlans } from '../../hooks/usePlans';
 import '../../styles/dashboard.css';
+import ManualPaymentSettings from '../components/ManualPaymentSettings';
 
 /* ── Inscriptions et essai gratuit ─────────────────────────────── */
 function PlatformSettings({ canEdit, onToast }) {
@@ -305,6 +306,7 @@ export default function Settings() {
       </div>
       {toast && <div className="adm-toast" role="status"><i className="ti ti-circle-check" aria-hidden="true" /> {toast}</div>}
       <PlatformSettings canEdit={can(role, 'settings.edit')} onToast={setToast} />
+      <ManualPaymentSettings canEdit={can(role, 'settings.edit')} onToast={setToast} />
       {can(role, 'team.manage') && <Team onToast={setToast} />}
     </div>
   );

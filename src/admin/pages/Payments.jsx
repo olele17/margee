@@ -6,6 +6,7 @@ import { can } from '../permissions';
 import { num, fcfa, dateFr, dateTimeFr, PLAN_LABELS, methodLabel } from '../format';
 import { PaymentBadge, PAYMENT_STATUSES } from '../components/StatusBadge';
 import ActionDialog from '../components/ActionDialog';
+import ManualDeclarations from '../components/ManualDeclarations';
 import { downloadCsv } from '../csv';
 import '../../styles/dashboard.css';
 
@@ -175,6 +176,9 @@ export default function Payments() {
 
       {toast && <div className="adm-toast" role="status"><i className="ti ti-circle-check" aria-hidden="true" /> {toast}</div>}
       {err && <div className="db-filter-err" role="alert">{err}</div>}
+
+      {/* Wave / Orange Money envoyés directement, à vérifier puis valider */}
+      <ManualDeclarations canAct={canActivate} onChange={(msg) => { setToast(msg); setReload((n) => n + 1); }} />
 
       <section className="db-card db-recent" aria-label="Liste des paiements" aria-busy={loading}>
         <div className="db-table-scroll">

@@ -65,6 +65,35 @@ export async function getAppInstallStats() {
   return data;
 }
 
+// ── PAIEMENTS DÉCLARÉS (Wave / Orange Money hors Bictorys) ─────────
+export async function listManualPayments(status = 'pending') {
+  const { data, error } = await sb().rpc('admin_list_manual_payments', { p_status: status });
+  if (error) throw adminError(error, 'Impossible de charger les paiements déclarés.');
+  return data || [];
+}
+export async function validateManualPayment(paymentId, reason) {
+  const { data, error } = await sb().rpc('admin_validate_manual_payment', { p_payment_id: paymentId, p_reason: reason });
+  if (error) throw adminError(error);
+  return data;
+}
+export async function rejectManualPayment(paymentId, reason) {
+  const { data, error } = await sb().rpc('admin_reject_manual_payment', { p_payment_id: paymentId, p_reason: reason });
+  if (error) throw adminError(error);
+  return data;
+}
+export async function getManualPaymentSettings() {
+  const { data, error } = await sb().from('platform_settings').select('key, value')
+    .in('key', ['manual_payment_enabled', 'manual_payment_number', 'manual_payment_name']);
+  if (error) throw adminError(error, 'Impossible de charger les paramètres.');
+  const get = (k) => data.find((r) => r.key === k)?.value;
+  return { enabled: get('manual_payment_enabled') === true, number: String(get('manual_payment_number') || ''), name: String(get('manual_payment_name') || '') };
+}
+export async function updateManualPayment({ enabled, number, name }, reason) {
+  const { data, error } = await sb().rpc('admin_update_manual_payment', { p_enabled: enabled, p_number: number, p_name: name, p_reason: reason });
+  if (error) throw adminError(error);
+  return data;
+}
+
 // ── TABLEAU PARTENAIRE ───────────────────────────────────────────
 // Totaux uniquement (partner_stats) : partenaire, support, super admin.
 export async function getPartnerStats() {

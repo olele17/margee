@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useAdmin } from './AdminRoute';
 import { ADMIN_NAV, ROLES, can } from './permissions';
-import { getUnreadThreads } from './adminApi';
+import { getUnreadThreads, listManualPayments } from './adminApi';
 import './admin.css';
 
 /**
@@ -31,6 +31,16 @@ export default function AdminLayout() {
     const tick = () => getUnreadThreads().then((n) => { if (alive) setUnreadMsgs(n); });
     tick();
     const t = setInterval(tick, 30000);
+    return () => { alive = false; clearInterval(t); };
+  }, [role, location.pathname]);
+  // Badge « Paiements » : paiements déclarés en attente de vérification
+  const [pendingDecl, setPendingDecl] = useState(0);
+  useEffect(() => {
+    if (!can(role, 'payments.view')) return undefined;
+    let alive = true;
+    const tick = () => listManualPayments('pending').then((r) => { if (alive) setPendingDecl(r.length); }).catch(() => {});
+    tick();
+    const t = setInterval(tick, 60000);
     return () => { alive = false; clearInterval(t); };
   }, [role, location.pathname]);
   const current = [...nav].sort((a, b) => b.to.length - a.to.length).find((n) => location.pathname.startsWith(n.to));
@@ -70,6 +80,9 @@ export default function AdminLayout() {
                 <i className={`ti ${l.icon}`} />
                 <span>{l.label}</span>
               </div>
+              {l.to === '/admin/paiements' && pendingDecl > 0 && (
+                <span className="sidebar-badge" aria-label={`${pendingDecl} paiement${pendingDecl > 1 ? 's' : ''} déclaré${pendingDecl > 1 ? 's' : ''} à vérifier`}>{pendingDecl}</span>
+              )}
               {l.to === '/admin/messages' && unreadMsgs > 0 && (
                 <span className="sidebar-badge" aria-label={`${unreadMsgs} conversation${unreadMsgs > 1 ? 's' : ''} en attente de réponse`}>{unreadMsgs}</span>
               )}

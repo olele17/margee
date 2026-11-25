@@ -358,6 +358,32 @@ export async function fetchPlanCatalog() {
  *   (create-checkout) branchée à l'étape 6 ; l'abonnement est activé par
  *   le webhook côté serveur, jamais depuis le navigateur.
  */
+// ── PAIEMENT DIRECT (Wave / Orange Money, hors Bictorys) ─────────
+// Numéro et nom affichés aux e-commerçants (réglages publics).
+export async function getManualPaymentInfo() {
+  const { data, error } = await requireSupabase().from('platform_settings').select('key, value')
+    .in('key', ['manual_payment_enabled', 'manual_payment_number', 'manual_payment_name']);
+  if (error) throw toError(error);
+  const get = (k) => data.find((r) => r.key === k)?.value;
+  return { enabled: get('manual_payment_enabled') === true, number: String(get('manual_payment_number') || ''), name: String(get('manual_payment_name') || '') };
+}
+
+// Déclaration du paiement : vérifiée puis validée par l'équipe Margee+
+export async function declareManualPayment({ plan, billing, method, payerPhone, transactionRef }) {
+  const { data, error } = await requireSupabase().rpc('declare_manual_payment', {
+    p_plan: plan, p_billing: billing, p_method: method, p_payer_phone: payerPhone, p_transaction_ref: transactionRef,
+  });
+  if (error) throw toError(error, 'Déclaration impossible. Réessaie.');
+  return data;
+}
+
+// Dernière déclaration du compte (null s'il n'y en a pas)
+export async function getMyManualPayment() {
+  const { data, error } = await requireSupabase().rpc('my_manual_payment');
+  if (error) throw toError(error);
+  return data || null;
+}
+
 export async function subscribe(accountId, planKey, billing = 'monthly') {
   const plan = PLANS[planKey];
   if (!plan) throw new Error('Plan invalide.');

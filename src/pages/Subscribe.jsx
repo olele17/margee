@@ -6,6 +6,7 @@ import usePlans from '../hooks/usePlans';
 import { getPlanOffer } from '../utils/planOffer';
 import { fmt } from '../utils/calc';
 import AuthShell from '../components/AuthShell';
+import ManualPayment from '../components/ManualPayment';
 
 // « de Pro », « d'Elite » (élision devant une voyelle)
 const de = (label) => (/^[aeiouyàâéèêëîïôöûü]/i.test(label || '') ? `d'${label}` : `de ${label}`);
@@ -178,6 +179,15 @@ export default function Subscribe() {
             <p style={{ fontSize: 12.5, color: 'var(--au-grey)', textAlign: 'center', marginTop: 12 }}>
               Wave · Orange Money · Carte bancaire, via Bictorys.
             </p>
+          )}
+          {/* Alternative : envoi direct puis déclaration, validée par l'équipe */}
+          {paid && (
+            <ManualPayment
+              plan={plan}
+              planLabel={selected.label}
+              billing={billing}
+              amount={billing === 'yearly' ? annualPrice(selected, annualMonths) : selected.price}
+            />
           )}
           {(offer.paidActive || offer.trialActive) && (
             <div className="au-switch"><Link to="/app/dashboard">← Retour à mon espace</Link></div>
