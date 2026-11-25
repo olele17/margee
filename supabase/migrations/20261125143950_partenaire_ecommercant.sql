@@ -17,11 +17,7 @@ create policy partners_select_self on public.partners
   for select to authenticated
   using (user_id = (select auth.uid()) or (select private.is_admin()));
 
--- Anciens partenaires « équipe » (s'il y en a) : déplacés vers partners
-insert into public.partners (user_id, invited_by, created_at)
-select user_id, invited_by, created_at from public.admins where role = 'partner'
-on conflict (user_id) do nothing;
-delete from public.admins where role = 'partner';
+-- (Aucun partenaire « équipe » n'existait dans admins : rien à déplacer.)
 
 create or replace function private.is_partner()
 returns boolean
