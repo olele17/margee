@@ -28,6 +28,7 @@ import Sales from './pages/app/Sales';
 import Ads from './pages/app/Ads';
 import Expenses from './pages/app/Expenses';
 import Investments from './pages/app/Investments';
+import PaidOnly from './components/PaidOnly';
 import Settings from './pages/app/Settings';
 import Notes from './pages/app/Notes';
 import Documents from './pages/app/Documents';
@@ -79,8 +80,8 @@ export default function App() {
             <Route path="produits" element={<Products />} />
             <Route path="ventes" element={<Sales />} />
             <Route path="pubs" element={<Ads />} />
-            <Route path="depenses" element={<Expenses />} />
-            <Route path="investissements" element={<Investments />} />
+            <Route path="depenses" element={<PaidOnly feature="depenses"><Expenses /></PaidOnly>} />
+            <Route path="investissements" element={<PaidOnly feature="investissements"><Investments /></PaidOnly>} />
             <Route path="notes" element={<Notes />} />
             <Route path="challenges" element={<Challenges />} />
             <Route path="documents" element={<Documents />} />

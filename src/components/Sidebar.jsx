@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmDialog from './ConfirmDialog';
+import { useHasPaidPlan } from './PaidOnly';
 import InstallButton from '../pwa/InstallButton';
 import usePlans from '../hooks/usePlans';
 import { getPlanOffer } from '../utils/planOffer';
@@ -13,8 +14,8 @@ const MENU_LINKS = [
   { to: '/app/ventes', icon: 'ti-receipt', label: 'Ventes' },
   { to: '/app/documents', icon: 'ti-file-invoice', label: 'Factures & devis' },
   { to: '/app/pubs', icon: 'ti-speakerphone', label: 'Pubs' },
-  { to: '/app/depenses', icon: 'ti-wallet', label: 'Dépenses' },
-  { to: '/app/investissements', icon: 'ti-chart-pie', label: 'Investissements' },
+  { to: '/app/depenses', icon: 'ti-wallet', label: 'Dépenses', paid: true },
+  { to: '/app/investissements', icon: 'ti-chart-pie', label: 'Investissements', paid: true },
   { to: '/app/notes', icon: 'ti-notebook', label: 'Notes' },
   { to: '/app/challenges', icon: 'ti-target-arrow', label: 'Challenges' },
 ];
@@ -24,6 +25,7 @@ const GENERAL_LINKS = [
 ];
 
 export default function Sidebar({ open = false, onClose = () => {} }) {
+  const hasPaidPlan = useHasPaidPlan();
   const { doLogout, account } = useAuth();
   const catalog = usePlans();
   const offer = getPlanOffer(account, catalog);
@@ -68,6 +70,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
               <span>{l.label}</span>
             </div>
             {l.badge && <span className="sidebar-badge">{l.badge}</span>}
+            {l.paid && !hasPaidPlan && <i className="ti ti-lock sidebar-lock" title="Disponible avec Pro ou Elite" aria-label="Réservé aux plans Pro et Elite" />}
           </NavLink>
         ))}
       </nav>
