@@ -18,14 +18,14 @@
 export const ROLES = {
   super_admin: { label: 'Super admin', description: 'Accès complet à la plateforme.' },
   support: { label: 'Support', description: 'Lecture, notes internes, signalements et prolongations.' },
-  partner: { label: 'Partenaire', description: 'Lecture seule : chiffres des inscrits, abonnements et revenus, sans données personnelles.' },
+  partner: { label: 'Partenaire', description: 'Tableau partenaire en lecture seule (compte normal, sans accès admin). Un e-commerçant peut être partenaire.' },
 };
 
 const BOTH = ['super_admin', 'support'];
 const SUPER = ['super_admin'];
 
 const RULES = {
-  'partner.view': ['super_admin', 'support', 'partner'], // tableau partenaire (totaux)
+  'partner.view': ['super_admin', 'support'], // tableau partenaire (totaux), vu par l'équipe
   'overview.view': BOTH,
   'merchants.view': BOTH,
   'merchants.notes': BOTH,          // notes internes de l'équipe

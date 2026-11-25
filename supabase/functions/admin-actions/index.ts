@@ -66,6 +66,73 @@ Deno.serve(async (req) => {
   // L'email est d'abord inscrit dans admin_invitations : le compte passe
   // même quand les inscriptions sont fermées. Un email déjà utilisé par un e-commerçant
   // est refusé (les comptes de l'équipe restent séparés).
+  // ── Accès partenaire (droit en plus sur un compte normal) ───────
+  // E-mail déjà inscrit (e-commerçant) : l'accès est ajouté tout de suite.
+  // Sinon : un compte est créé par invitation, avec l'accès partenaire.
+  if (action === 'invite_admin' && body.role === 'partner') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const mode = body.mode === 'link' ? 'link' : 'email';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return fail(400, 'Adresse email invalide.');
+    const redirectTo = typeof body.redirect_to === 'string' && /^https?:\/\/[^\s]+\/reinitialiser-mot-de-passe\?invitation=partenaire$/.test(body.redirect_to)
+      ? body.redirect_to : undefined;
+
+    const { data: existing } = await db.from('profiles').select('id').eq('email', email).maybeSingle();
+    if (existing) {
+      const { data: staff } = await db.from('admins').select('role').eq('user_id', existing.id).maybeSingle();
+      if (staff) return fail(409, 'Cette personne fait partie de l\'équipe : elle voit déjà le tableau partenaire dans l\'admin.');
+      const { error: upErr } = await db.from('partners')
+        .upsert({ user_id: existing.id, invited_by: caller.id, created_at: new Date().toISOString(), disabled_at: null });
+      if (upErr) { console.error('partners', upErr.message); return fail(500, 'Accès partenaire impossible à ajouter. Réessaie.'); }
+      await db.from('admin_audit_log').insert({
+        admin_id: caller.id, admin_email: caller.email, action: 'partner.add',
+        account_id: existing.id, before: null, after: { email, existing_account: true }, reason,
+      });
+      return reply(200, { ok: true, user_id: existing.id, email, role: 'partner', existing: true });
+    }
+
+    // Nouveau compte : passe même si les inscriptions sont fermées
+    const { error: invErr } = await db.from('admin_invitations')
+      .upsert({ email, role: 'partner', invited_by: caller.id, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString() });
+    if (invErr) return fail(500, 'Invitation impossible. Réessaie.');
+    const clearInvitation = () => db.from('admin_invitations').delete().eq('email', email);
+    const meta = { invite_note: 'Tu as accès au tableau partenaire de Margee+ : inscrits, abonnements et revenus.' };
+    let userId: string | undefined;
+    let link: string | undefined;
+    if (mode === 'link') {
+      const { data, error } = await db.auth.admin.generateLink({ type: 'invite', email, options: { data: meta, redirectTo } });
+      if (error) {
+        console.error('generateLink', error.message);
+        await clearInvitation();
+        return fail(502, /already|registered|exists/i.test(error.message) ? 'Cet email a déjà un compte.' : 'Lien d\'invitation impossible à créer. Réessaie.');
+      }
+      userId = data.user?.id;
+      link = data.properties?.action_link;
+    } else {
+      const { data, error } = await db.auth.admin.inviteUserByEmail(email, { data: meta, redirectTo });
+      if (error) {
+        console.error('inviteUserByEmail', error.message);
+        await clearInvitation();
+        const msg = /rate|limit|seconds/i.test(error.message)
+          ? 'Trop d\'emails envoyés : réessaie plus tard, ou crée un lien à partager.'
+          : 'Email d\'invitation non envoyé. Crée plutôt un lien à partager.';
+        return fail(502, msg);
+      }
+      userId = data.user?.id;
+    }
+    await clearInvitation();
+    if (!userId) return fail(500, 'Invitation impossible. Réessaie.');
+    const { error: pErr } = await db.from('partners').insert({ user_id: userId, invited_by: caller.id });
+    if (pErr) {
+      await db.auth.admin.deleteUser(userId); // pas de compte orphelin
+      return fail(500, 'Invitation impossible. Réessaie.');
+    }
+    await db.from('admin_audit_log').insert({
+      admin_id: caller.id, admin_email: caller.email, action: 'partner.invite',
+      account_id: userId, before: null, after: { email, mode }, reason,
+    });
+    return reply(200, { ok: true, user_id: userId, email, role: 'partner', mode, ...(link ? { link } : {}) });
+  }
+
   if (action === 'invite_admin') {
     const email = String(body.email || '').trim().toLowerCase();
     const role = String(body.role || '');

@@ -358,6 +358,13 @@ export async function fetchPlanCatalog() {
  *   (create-checkout) branchée à l'étape 6 ; l'abonnement est activé par
  *   le webhook côté serveur, jamais depuis le navigateur.
  */
+// ── ACCÈS PARTENAIRE (droit en plus sur un compte normal) ─────────
+export async function getMyPartnerAccess() {
+  const { data, error } = await requireSupabase().rpc('my_partner_access');
+  if (error) throw toError(error);
+  return data === true;
+}
+
 // ── PAIEMENT DIRECT (Wave / Orange Money, hors Bictorys) ─────────
 // Numéro et nom affichés aux e-commerçants (réglages publics).
 export async function getManualPaymentInfo() {

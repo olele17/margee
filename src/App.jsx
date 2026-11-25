@@ -22,6 +22,7 @@ import AdminSettings from './admin/pages/Settings';
 import AdminAuditLog from './admin/pages/AuditLog';
 import AdminMessages from './admin/pages/Messages';
 import AdminPartner from './admin/pages/Partner';
+import PartnerBoard from './pages/PartnerBoard';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -93,6 +94,8 @@ export default function App() {
           </Route>
 
           {/* Platform operator */}
+          {/* Tableau partenaire (compte normal, même sans abonnement actif) */}
+          <Route path="/partenaire" element={<ProtectedRoute requireActiveSub={false}><PartnerBoard /></ProtectedRoute>} />
           {/* Espace super admin (séparé de /app) */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>

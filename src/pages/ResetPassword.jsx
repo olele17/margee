@@ -17,6 +17,7 @@ export default function ResetPassword() {
   const invParam = useSearchParams()[0].get('invitation');
   const invitation = invParam === '1';
   const shopInvite = invParam === 'boutique';
+  const partnerInvite = invParam === 'partenaire';
   const [status, setStatus] = useState('checking'); // checking | ready | invalid
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -49,6 +50,7 @@ export default function ResetPassword() {
       // Membre de l'équipe : direction l'espace admin
       const role = await getAdminRole().catch(() => null);
       if (role) { navigate('/admin', { replace: true }); return; }
+      if (partnerInvite) { navigate('/partenaire', { replace: true }); return; }
       navigate(isSubscriptionActive(account) ? '/app/dashboard' : '/abonnement', { replace: true });
     } catch (e2) {
       setErr(e2.message);
@@ -75,7 +77,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthShell label={invitation ? "Équipe Margee+" : shopInvite ? "Invitation" : "Nouveau mot de passe"} title={invitation ? "Bienvenue dans l'équipe" : shopInvite ? "Bienvenue sur Margee+" : "Choisis ton nouveau mot de passe"} subtitle={invitation ? "Choisis ton mot de passe pour accéder à l'espace admin (8 caractères minimum)." : shopInvite ? "Choisis ton mot de passe pour accéder à ton espace (8 caractères minimum)." : "8 caractères minimum."}>
+    <AuthShell label={invitation ? "Équipe Margee+" : (shopInvite || partnerInvite) ? "Invitation" : "Nouveau mot de passe"} title={invitation ? "Bienvenue dans l'équipe" : (shopInvite || partnerInvite) ? "Bienvenue sur Margee+" : "Choisis ton nouveau mot de passe"} subtitle={invitation ? "Choisis ton mot de passe pour accéder à l'espace admin (8 caractères minimum)." : partnerInvite ? "Choisis ton mot de passe pour accéder au tableau partenaire (8 caractères minimum)." : shopInvite ? "Choisis ton mot de passe pour accéder à ton espace (8 caractères minimum)." : "8 caractères minimum."}>
       <form className="au-form" onSubmit={submit} noValidate>
         <div className="au-field">
           <label htmlFor="rp-password">Nouveau mot de passe</label>

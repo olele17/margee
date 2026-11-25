@@ -94,6 +94,18 @@ export async function updateManualPayment({ enabled, number, name }, reason) {
   return data;
 }
 
+// ── PARTENAIRES (accès au tableau partenaire) ─────────────────────
+export async function listPartners() {
+  const { data, error } = await sb().rpc('admin_list_partners');
+  if (error) throw adminError(error, 'Impossible de charger les partenaires.');
+  return data || [];
+}
+export async function setPartnerDisabled(userId, disabled, reason) {
+  const { data, error } = await sb().rpc('admin_set_partner_disabled', { p_user_id: userId, p_disabled: disabled, p_reason: reason });
+  if (error) throw adminError(error);
+  return data;
+}
+
 // ── TABLEAU PARTENAIRE ───────────────────────────────────────────
 // Totaux uniquement (partner_stats) : partenaire, support, super admin.
 export async function getPartnerStats() {
@@ -324,7 +336,7 @@ export async function setTeamDisabled(userId, disabled, reason) {
 export function inviteTeamMember(email, role, mode, reason) {
   return callAdminActions({
     action: 'invite_admin', email, role, mode, reason,
-    redirect_to: `${window.location.origin}/reinitialiser-mot-de-passe?invitation=1`,
+    redirect_to: `${window.location.origin}/reinitialiser-mot-de-passe?invitation=${role === 'partner' ? 'partenaire' : '1'}`,
   }, 'Invitation impossible. Réessaie.');
 }
 

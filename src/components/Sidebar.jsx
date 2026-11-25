@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmDialog from './ConfirmDialog';
@@ -7,6 +7,7 @@ import InstallButton from '../pwa/InstallButton';
 import usePlans from '../hooks/usePlans';
 import { getPlanOffer } from '../utils/planOffer';
 import { fmt } from '../utils/calc';
+import { getMyPartnerAccess } from '../services/api';
 
 const MENU_LINKS = [
   { to: '/app/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
@@ -26,6 +27,9 @@ const GENERAL_LINKS = [
 
 export default function Sidebar({ open = false, onClose = () => {} }) {
   const hasPaidPlan = useHasPaidPlan();
+  // Accès au tableau partenaire (droit en plus sur ce compte)
+  const [isPartner, setIsPartner] = useState(false);
+  useEffect(() => { getMyPartnerAccess().then(setIsPartner).catch(() => setIsPartner(false)); }, []);
   const { doLogout, account } = useAuth();
   const catalog = usePlans();
   const offer = getPlanOffer(account, catalog);
@@ -84,6 +88,11 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
             <span>Installer l'app</span>
           </div>
         </InstallButton>
+        {isPartner && (
+          <NavLink to="/partenaire" onClick={onClose} className="sidebar-link">
+            <div className="sidebar-link-content"><i className="ti ti-chart-histogram" /><span>Tableau partenaire</span></div>
+          </NavLink>
+        )}
         {GENERAL_LINKS.map((l) => (
           <NavLink
             key={l.to}

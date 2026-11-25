@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isSubscriptionActive } from '../services/api';
+import { isSubscriptionActive, getMyPartnerAccess } from '../services/api';
 import AuthShell from '../components/AuthShell';
 
 export default function Login() {
@@ -18,7 +18,10 @@ export default function Login() {
     setLoading(true);
     try {
       const account = await doLogin(email, password);
-      navigate(isSubscriptionActive(account) ? '/app/dashboard' : '/abonnement');
+      if (isSubscriptionActive(account)) { navigate('/app/dashboard'); return; }
+      // Partenaire sans abonnement actif : directement son tableau
+      const partner = await getMyPartnerAccess().catch(() => false);
+      navigate(partner ? '/partenaire' : '/abonnement');
     } catch (e2) {
       setErr(e2.message);
     } finally {

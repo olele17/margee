@@ -10,6 +10,7 @@ import ActionDialog from '../components/ActionDialog';
 import { reloadPlans } from '../../hooks/usePlans';
 import '../../styles/dashboard.css';
 import ManualPaymentSettings from '../components/ManualPaymentSettings';
+import PartnersList from '../components/PartnersList';
 
 /* ── Inscriptions et essai gratuit ─────────────────────────────── */
 function PlatformSettings({ canEdit, onToast }) {
@@ -115,7 +116,7 @@ function PlatformSettings({ canEdit, onToast }) {
 }
 
 /* ── Équipe ─────────────────────────────────────────────────────── */
-function Team({ onToast }) {
+function Team({ onToast, onPartnersChange }) {
   const [team, setTeam] = useState(null);
   const [err, setErr] = useState('');
   const [dialog, setDialog] = useState(null); // { type, member }
@@ -242,10 +243,13 @@ function Team({ onToast }) {
           const res = await inviteTeamMember(invite.email.trim(), invite.role, invite.mode, reason);
           close();
           setInviteLink(res.link ? { email: res.email, link: res.link } : null);
+          onPartnersChange?.();
           setCopied(false);
           setInvite({ email: '', role: 'support', mode: invite.mode });
           await load();
-          onToast(res.link ? `Invitation créée pour ${res.email} : copie le lien ci-dessous.` : `Email d'invitation envoyé à ${res.email}.`);
+          onToast(res.existing
+            ? `${res.email} a déjà un compte : accès partenaire ajouté. Il le trouve dans le menu de son espace.`
+            : res.link ? `Invitation créée pour ${res.email} : copie le lien ci-dessous.` : `Email d'invitation envoyé à ${res.email}.`);
         }}
       />
       <ActionDialog
@@ -296,6 +300,7 @@ function Team({ onToast }) {
 export default function Settings() {
   const { role } = useAdmin();
   const [toast, setToast] = useState('');
+  const [partnersKey, setPartnersKey] = useState(0);
   return (
     <div className="adm-page">
       <div className="adm-page-head">
@@ -307,7 +312,8 @@ export default function Settings() {
       {toast && <div className="adm-toast" role="status"><i className="ti ti-circle-check" aria-hidden="true" /> {toast}</div>}
       <PlatformSettings canEdit={can(role, 'settings.edit')} onToast={setToast} />
       <ManualPaymentSettings canEdit={can(role, 'settings.edit')} onToast={setToast} />
-      {can(role, 'team.manage') && <Team onToast={setToast} />}
+      {can(role, 'team.manage') && <Team onToast={setToast} onPartnersChange={() => setPartnersKey((k) => k + 1)} />}
+      {can(role, 'partner.view') && <PartnersList canEdit={can(role, 'team.manage')} onToast={setToast} reloadKey={partnersKey} />}
     </div>
   );
 }

@@ -418,3 +418,14 @@
 .adm-manual-facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-text); }
 .adm-manual-facts dd { margin: 0; font-weight: 600; color: var(--dark-text); }
 .adm-manual-actions { display: flex; gap: 8px; }
+
+/* ── Tableau partenaire hors admin (/partenaire) ───────────────── */
+.pb-shell { min-height: 100vh; background: var(--bg-page, #FAF7F0); }
+.pb-header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px clamp(16px, 4vw, 32px); background: var(--header, #1B1D21); }
+.pb-logo { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; font-weight: 800; letter-spacing: 0.02em; }
+.pb-logo img { border-radius: 9px; }
+.pb-logo em { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold, #D4A03A); margin-left: 6px; }
+.pb-actions { display: flex; gap: 8px; }
+.pb-actions .btn { min-height: 40px; }
+.pb-actions .btn-ghost, .pb-actions .btn-outline { color: #E8E4DC; border-color: rgba(255,255,255,0.25); background: transparent; }
+.pb-main { padding: 24px clamp(16px, 4vw, 32px) 48px; max-width: 1200px; margin: 0 auto; }
