@@ -429,3 +429,8 @@
 .pb-actions .btn { min-height: 40px; }
 .pb-actions .btn-ghost, .pb-actions .btn-outline { color: #E8E4DC; border-color: rgba(255,255,255,0.25); background: transparent; }
 .pb-main { padding: 24px clamp(16px, 4vw, 32px) 48px; max-width: 1200px; margin: 0 auto; }
+
+/* Lien de parrainage (tableau partenaire) */
+.adm-ref { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.adm-ref-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.adm-ref-input { flex: 1 1 240px; min-width: 0; min-height: 40px; padding: 8px 12px; border: 1px solid var(--border, #ECE5D6); border-radius: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; background: var(--bg-page, #FAF7F0); color: inherit; }

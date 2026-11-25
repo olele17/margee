@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import ActionDialog from './ActionDialog';
 import { listPartners, setPartnerDisabled } from '../adminApi';
-import { dateFr, dateTimeFr } from '../format';
+import { dateFr, dateTimeFr, fcfa, num } from '../format';
 
 /**
  * Comptes ayant le tableau partenaire (e-commerçants ou partenaires
@@ -22,7 +22,7 @@ export default function PartnersList({ canEdit, onToast, reloadKey }) {
       <div className="db-card-head">
         <div>
           <h2 id="partners-title" className="db-card-title"><i className="ti ti-chart-histogram" aria-hidden="true" /> Partenaires ({rows.length})</h2>
-          <div className="db-card-sub">Accès en lecture seule au tableau partenaire (chiffres, sans données personnelles). Un e-commerçant partenaire garde sa boutique. Invite un partenaire avec le rôle « Partenaire » ci-dessus.</div>
+          <div className="db-card-sub">Accès en lecture seule au tableau partenaire (chiffres, sans données personnelles). Chaque partenaire ne voit que les comptes créés via son lien de parrainage. Un e-commerçant partenaire garde sa boutique. Invite un partenaire avec le rôle « Partenaire » ci-dessus.</div>
         </div>
       </div>
       {rows.length === 0 ? (
@@ -30,13 +30,18 @@ export default function PartnersList({ canEdit, onToast, reloadKey }) {
       ) : (
         <div className="db-table-scroll">
           <table className="db-table">
-            <thead><tr><th>Compte</th><th>Accès depuis</th><th>Dernière connexion</th>{canEdit && <th><span className="sr-only">Action</span></th>}</tr></thead>
+            <thead><tr><th>Compte</th><th>Code</th><th>Filleuls</th><th>Accès depuis</th><th>Dernière connexion</th>{canEdit && <th><span className="sr-only">Action</span></th>}</tr></thead>
             <tbody>
               {rows.map((p) => (
                 <tr key={p.user_id} className={p.disabled_at ? 'adm-row-off' : ''}>
                   <td>
                     <div className="db-strong">{p.business_name || p.email}</div>
                     <div className="adm-sub">{p.email}{p.disabled_at ? ' · accès retiré' : ''}</div>
+                  </td>
+                  <td className="db-nowrap"><code>{p.code}</code></td>
+                  <td className="db-nowrap">
+                    <div className="db-strong">{num(p.referrals)} inscrit{Number(p.referrals) > 1 ? 's' : ''}</div>
+                    <div className="adm-sub">{num(p.referrals_paid)} abonné{Number(p.referrals_paid) > 1 ? 's' : ''} · {fcfa(p.referrals_revenue)}</div>
                   </td>
                   <td className="db-nowrap">{dateFr(p.created_at)}</td>
                   <td className="db-nowrap">{p.last_sign_in_at ? dateTimeFr(p.last_sign_in_at) : 'Invitation en attente'}</td>

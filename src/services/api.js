@@ -13,6 +13,7 @@
 
 import { supabase } from '../lib/supabase';
 import { CHALLENGE_TYPES } from '../utils/calc';
+import { getReferral, clearReferral } from '../utils/referral';
 
 // ── ERREURS : messages clairs en français ───────────────────────
 function isNetworkError(error) {
@@ -137,11 +138,12 @@ export async function signup({ ownerName, businessName, phone, email, password }
     email: String(email).trim(),
     password,
     options: {
-      data: { business_name: businessName, owner_name: ownerName, phone },
+      data: { business_name: businessName, owner_name: ownerName, phone, ...(getReferral() ? { ref: getReferral() } : {}) },
       emailRedirectTo: `${window.location.origin}/connexion`,
     },
   });
   if (error) throw toError(error, 'Inscription impossible. Réessaie.');
+  clearReferral();
   // Email déjà utilisé : Supabase renvoie un utilisateur sans identité
   if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
     throw new Error(AUTH_ERRORS.user_already_exists);
