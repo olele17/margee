@@ -46,8 +46,8 @@ export function AuthProvider({ children }) {
     return a;
   }, []);
 
-  const doLogin = useCallback(async (email, password) => {
-    const a = await api.login(email, password);
+  const doLogin = useCallback(async (email, password, captchaToken) => {
+    const a = await api.login(email, password, captchaToken);
     setAccount(a);
     return a;
   }, []);

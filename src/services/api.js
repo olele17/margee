@@ -39,6 +39,7 @@ const AUTH_ERRORS = {
   email_address_invalid: 'Adresse email invalide.',
   same_password: "Le nouveau mot de passe doit être différent de l'ancien.",
   signup_disabled: 'Les inscriptions sont fermées pour le moment.',
+  captcha_failed: 'Vérification anti-robots échouée : réessaie.',
 };
 
 // Transforme une erreur Supabase en Error avec un message lisible.
@@ -48,6 +49,7 @@ function toError(error, fallback = 'Une erreur est survenue. Réessaie.') {
   if (error.code && AUTH_ERRORS[error.code]) return new Error(AUTH_ERRORS[error.code]);
   const msg = String(error.message || '');
   if (/invalid login credentials/i.test(msg)) return new Error(AUTH_ERRORS.invalid_credentials);
+  if (/captcha/i.test(msg)) return new Error(AUTH_ERRORS.captcha_failed);
   if (/email not confirmed/i.test(msg)) return new Error(AUTH_ERRORS.email_not_confirmed);
   if (/already registered/i.test(msg)) return new Error(AUTH_ERRORS.user_already_exists);
   if (/signup_closed|database error saving new user/i.test(msg)) return new Error(AUTH_ERRORS.signup_disabled);
@@ -128,7 +130,7 @@ export async function getSignupStatus() {
  * la base (trigger). Si la confirmation d'email est activée dans
  * Supabase, aucune session n'est ouverte : needsEmailConfirmation = true.
  */
-export async function signup({ ownerName, businessName, phone, email, password }) {
+export async function signup({ ownerName, businessName, phone, email, password, captchaToken }) {
   const sb = requireSupabase();
   if (String(password || '').length < 8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
   const status = await getSignupStatus();
@@ -140,6 +142,7 @@ export async function signup({ ownerName, businessName, phone, email, password }
     options: {
       data: { business_name: businessName, owner_name: ownerName, phone, ...(getReferral() ? { ref: getReferral() } : {}) },
       emailRedirectTo: `${window.location.origin}/connexion`,
+      ...(captchaToken ? { captchaToken } : {}),
     },
   });
   if (error) throw toError(error, 'Inscription impossible. Réessaie.');
@@ -157,9 +160,11 @@ export async function signup({ ownerName, businessName, phone, email, password }
   };
 }
 
-export async function login(email, password) {
+export async function login(email, password, captchaToken) {
   const sb = requireSupabase();
-  const { data, error } = await sb.auth.signInWithPassword({ email: String(email).trim(), password });
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: String(email).trim(), password, ...(captchaToken ? { options: { captchaToken } } : {}),
+  });
   if (error) throw toError(error, 'Connexion impossible. Réessaie.');
   // Date de dernière connexion (sans bloquer la connexion en cas d'échec)
   sb.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', data.user.id).then(() => {});
@@ -190,11 +195,42 @@ export function onAuthChange(callback) {
 
 // ── MOT DE PASSE OUBLIÉ ──────────────────────────────────────────
 // Remplacé par : Supabase Auth (email de réinitialisation)
-export async function requestPasswordReset(email) {
+export async function requestPasswordReset(email, captchaToken) {
   const { error } = await requireSupabase().auth.resetPasswordForEmail(String(email).trim(), {
     redirectTo: `${window.location.origin}/reinitialiser-mot-de-passe`,
+    ...(captchaToken ? { captchaToken } : {}),
   });
   if (error) throw toError(error, "Impossible d'envoyer l'email. Réessaie.");
+}
+
+// ── GOOGLE ────────────────────────────────────────────────────────
+// Connexion ou inscription avec Google (fournisseur activé dans Supabase).
+export async function signInWithGoogle() {
+  const { error } = await requireSupabase().auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/auth/google`, queryParams: { prompt: 'select_account' } },
+  });
+  if (error) throw toError(error, 'Connexion Google impossible. Réessaie.');
+}
+
+// Au retour de Google : erreur éventuelle, session, parrain, dernière connexion.
+export async function finishGoogleLogin() {
+  const sb = requireSupabase();
+  const params = new URLSearchParams(`${window.location.search.slice(1)}&${window.location.hash.slice(1)}`);
+  const desc = params.get('error_description') || params.get('error');
+  if (desc) throw toError({ message: desc }, 'Connexion Google annulée ou refusée.');
+  let session = null;
+  for (let i = 0; i < 20 && !session; i++) {
+    ({ data: { session } } = await sb.auth.getSession());
+    if (!session) await new Promise((r) => setTimeout(r, 250));
+  }
+  if (!session) throw new Error('Connexion Google impossible. Réessaie.');
+  const code = getReferral();
+  if (code) {
+    await sb.rpc('claim_referral', { p_code: code }).then(() => {}, () => {});
+    clearReferral();
+  }
+  sb.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', session.user.id).then(() => {});
 }
 
 export async function hasSession() {

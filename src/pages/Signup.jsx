@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getSignupStatus } from '../services/api';
 import AuthShell from '../components/AuthShell';
+import Turnstile, { captchaEnabled, CAPTCHA_WAIT } from '../components/Turnstile';
+import GoogleButton from '../components/GoogleButton';
 
 /* Inscriptions fermées depuis /admin/parametres : message de l'équipe */
 function SignupClosed({ message }) {
@@ -26,6 +28,8 @@ export default function Signup() {
   });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState('');
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [confirmEmail, setConfirmEmail] = useState('');
   // Inscriptions ouvertes ? (la base refuse de toute façon si elles sont fermées)
   const [closedMessage, setClosedMessage] = useState('');
@@ -46,9 +50,10 @@ export default function Signup() {
       setErr('Remplis tous les champs.');
       return;
     }
+    if (captchaEnabled && !captcha) { setErr(CAPTCHA_WAIT); return; }
     setLoading(true);
     try {
-      const result = await doSignup(form);
+      const result = await doSignup({ ...form, captchaToken: captcha });
       if (result.needsEmailConfirmation) {
         // Supabase envoie un email de confirmation : pas de session avant le clic
         setConfirmEmail(form.email);
@@ -57,6 +62,7 @@ export default function Signup() {
       navigate('/abonnement');
     } catch (e2) {
       setErr(e2.message);
+      setCaptchaKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -82,6 +88,8 @@ export default function Signup() {
 
   return (
     <AuthShell label="Inscription" title="Crée ton espace business" subtitle="Quelques infos et tu enregistres ta première vente.">
+      <div style={{ marginTop: 18 }}><GoogleButton label="S'inscrire avec Google" /></div>
+      <div className="au-divider">ou avec ton email</div>
       <form className="au-form" onSubmit={submit}>
         <div className="au-row-2">
           <div className="au-field">
@@ -105,6 +113,7 @@ export default function Signup() {
           <label htmlFor="su-password">Mot de passe</label>
           <input id="su-password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="••••••••" />
         </div>
+        <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
         {err && <div className="au-err" role="alert">{err}</div>}
         <button className="au-btn au-btn--gold" disabled={loading}>
           {loading ? 'Création…' : 'Créer mon compte'}

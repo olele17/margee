@@ -293,3 +293,7 @@
 .mp-method.on { border-color: var(--au-ink); background: var(--au-cream); }
 .mp-note { margin: 0; font-size: 12px; color: var(--au-grey); text-align: center; }
 .mp-warn { display: flex; gap: 8px; margin: 0; padding: 10px 16px; background: #FDF1EE; color: #8E2F23; font-size: 13px; }
+
+/* Google + anti-robots */
+.au-google { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+.au-captcha { min-height: 65px; display: flex; justify-content: center; }

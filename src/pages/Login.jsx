@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isSubscriptionActive, getMyPartnerAccess } from '../services/api';
 import AuthShell from '../components/AuthShell';
+import Turnstile, { captchaEnabled, CAPTCHA_WAIT } from '../components/Turnstile';
+import GoogleButton from '../components/GoogleButton';
 
 export default function Login() {
   const { doLogin } = useAuth();
@@ -11,19 +13,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState('');
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
+    if (captchaEnabled && !captcha) { setErr(CAPTCHA_WAIT); return; }
     setLoading(true);
     try {
-      const account = await doLogin(email, password);
+      const account = await doLogin(email, password, captcha);
       if (isSubscriptionActive(account)) { navigate('/app/dashboard'); return; }
       // Partenaire sans abonnement actif : directement son tableau
       const partner = await getMyPartnerAccess().catch(() => false);
       navigate(partner ? '/partenaire' : '/abonnement');
     } catch (e2) {
       setErr(e2.message);
+      setCaptchaKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -43,11 +49,15 @@ export default function Login() {
           </div>
           <input id="login-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
         </div>
+        <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
         {err && <div className="au-err" role="alert">{err}</div>}
         <button className="au-btn au-btn--gold" disabled={loading}>
           {loading ? 'Connexion…' : 'Se connecter'}
         </button>
       </form>
+
+      <div className="au-divider">ou</div>
+      <GoogleButton />
 
       <div className="au-switch">
         Pas encore de compte ? <Link to="/inscription">Créer un compte</Link>

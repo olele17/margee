@@ -37,6 +37,7 @@ import Documents from './pages/app/Documents';
 import DocumentEditor from './pages/app/DocumentEditor';
 import UpdatePrompt from './pwa/UpdatePrompt';
 import Challenges from './pages/app/Challenges';
+import GoogleCallback from './pages/GoogleCallback';
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/connexion" element={<Login />} />
           <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
           <Route path="/reinitialiser-mot-de-passe" element={<ResetPassword />} />
+          <Route path="/auth/google" element={<GoogleCallback />} />
 
           {/* Subscription — logged in but not necessarily active yet */}
           <Route

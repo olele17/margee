@@ -2,23 +2,28 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { requestPasswordReset } from '../services/api';
 import AuthShell from '../components/AuthShell';
+import Turnstile, { captchaEnabled, CAPTCHA_WAIT } from '../components/Turnstile';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [captcha, setCaptcha] = useState('');
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setErr('Saisis une adresse email valide.'); return; }
+    if (captchaEnabled && !captcha) { setErr(CAPTCHA_WAIT); return; }
     setLoading(true);
     try {
-      await requestPasswordReset(email);
+      await requestPasswordReset(email, captcha);
       setSent(true);
     } catch (e2) {
       setErr(e2.message);
+      setCaptchaKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -46,6 +51,7 @@ export default function ForgotPassword() {
           <label htmlFor="fp-email">Email</label>
           <input id="fp-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="toi@email.com" />
         </div>
+        <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
         {err && <div className="au-err" role="alert">{err}</div>}
         <button className="au-btn au-btn--gold" disabled={loading}>
           {loading ? 'Envoi…' : 'Recevoir le lien'}

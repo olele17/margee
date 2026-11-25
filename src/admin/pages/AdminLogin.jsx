@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AuthShell from '../../components/AuthShell';
 import { getAdminRole } from '../adminApi';
+import Turnstile, { captchaEnabled, CAPTCHA_WAIT } from '../../components/Turnstile';
 
 /**
  * Connexion à l'espace admin (Supabase Auth, email + mot de passe).
@@ -17,13 +18,16 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [err, setErr] = useState(location.state?.denied ? 'Accès refusé : ce compte n\'a pas accès à l\'administration.' : '');
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState('');
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
+    if (captchaEnabled && !captcha) { setErr(CAPTCHA_WAIT); return; }
     setLoading(true);
     try {
-      await doLogin(email, password);
+      await doLogin(email, password, captcha);
       const role = await getAdminRole();
       if (!role) {
         await doLogout();
@@ -33,6 +37,7 @@ export default function AdminLogin() {
       navigate(location.state?.from && location.state.from.startsWith('/admin') ? location.state.from : '/admin', { replace: true });
     } catch (e2) {
       setErr(e2.message);
+      setCaptchaKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -55,6 +60,7 @@ export default function AdminLogin() {
           <label htmlFor="adm-password">Mot de passe</label>
           <input id="adm-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
+        <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
         {err && <div className="au-err" role="alert">{err}</div>}
         <button className="au-btn au-btn--gold" disabled={loading}>{loading ? 'Connexion…' : 'Se connecter'}</button>
       </form>
