@@ -5,7 +5,7 @@ import { fcfa, num, dateFr, dateTimeFr, dayShort, daysUntil, PLAN_LABELS } from 
 import { SubscriptionBadge, PaymentBadge } from '../components/StatusBadge';
 import '../../styles/dashboard.css';
 
-function StatCard({ icon, label, value, tone, hint }) {
+export function StatCard({ icon, label, value, tone, hint }) {
   return (
     <div className={`adm-stat${tone ? ` adm-stat--${tone}` : ''}`}>
       <span className="adm-stat-icon" aria-hidden="true"><i className={`ti ${icon}`} /></span>
@@ -18,7 +18,7 @@ function StatCard({ icon, label, value, tone, hint }) {
   );
 }
 
-function SignupsChart({ days }) {
+export function SignupsChart({ days }) {
   const max = Math.max(...days.map((d) => Number(d.count)), 1);
   const total = days.reduce((a, d) => a + Number(d.count), 0);
   return (
@@ -43,7 +43,7 @@ function SignupsChart({ days }) {
   );
 }
 
-function PlanSplit({ byPlan }) {
+export function PlanSplit({ byPlan }) {
   const rows = [['free', 'Free (essai)'], ['pro', 'Pro'], ['elite', 'Elite']].map(([k, l]) => ({ key: k, label: l, n: Number(byPlan?.[k] || 0) }));
   const total = rows.reduce((a, r) => a + r.n, 0) || 1;
   return (

@@ -171,7 +171,7 @@ function Team({ onToast }) {
                 <td>
                   {!m.is_me && (
                     <div className="adm-row-actions">
-                      {!m.disabled_at && (
+                      {!m.disabled_at && m.role !== 'partner' && (
                         <button type="button" className="btn btn-outline btn-sm" onClick={() => { setNewRole(m.role === 'support' ? 'super_admin' : 'support'); setDialog({ type: 'role', member: m }); }}>
                           <i className="ti ti-switch-horizontal" aria-hidden="true" /> Rôle
                         </button>
@@ -201,6 +201,7 @@ function Team({ onToast }) {
             <select id="inv-role" value={invite.role} onChange={(e) => { const v = e.target.value; setInvite((s) => ({ ...s, role: v })); }}>
               <option value="support">Support</option>
               <option value="super_admin">Super admin</option>
+              <option value="partner">Partenaire (lecture seule)</option>
             </select>
           </div>
           <fieldset className="adm-invite-mode">

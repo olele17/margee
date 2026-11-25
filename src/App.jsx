@@ -21,6 +21,7 @@ import AdminPlans from './admin/pages/Plans';
 import AdminSettings from './admin/pages/Settings';
 import AdminAuditLog from './admin/pages/AuditLog';
 import AdminMessages from './admin/pages/Messages';
+import AdminPartner from './admin/pages/Partner';
 
 import Dashboard from './pages/app/Dashboard';
 import Products from './pages/app/Products';
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="plans" element={<AdminRoute permission="plans.view"><AdminPlans /></AdminRoute>} />
             <Route path="parametres" element={<AdminRoute permission="settings.view"><AdminSettings /></AdminRoute>} />
             <Route path="journal" element={<AdminRoute permission="audit.view"><AdminAuditLog /></AdminRoute>} />
+            <Route path="partenaire" element={<AdminRoute permission="partner.view"><AdminPartner /></AdminRoute>} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
 

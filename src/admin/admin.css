@@ -401,3 +401,7 @@
 .adm-head-actions .adm-invite-link { flex-basis: 100%; text-align: left; }
 .adm-im-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 480px) { .adm-im-row { grid-template-columns: 1fr; } }
+
+/* ── Tableau partenaire ───────────────────────────────────────── */
+.adm-partner-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 18px; }
+.adm-partner-note .ti { color: var(--gold-dark); font-size: 18px; flex-shrink: 0; }

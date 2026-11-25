@@ -6,7 +6,8 @@
 //                                   données ; les paiements sont gardés
 //                                   mais anonymisés (account_id → null)
 //   invite_admin    (super_admin) : invite un membre de l'équipe (email
-//                                   envoyé par Supabase, ou lien à partager)
+//                                   envoyé par Supabase, ou lien à partager) ;
+//                                   rôles : super_admin, support, partner
 //   invite_merchant (super_admin) : invite un e-commerçant avec un plan
 //                                   offert (Free, Pro ou Elite, durée choisie)
 //
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
     const role = String(body.role || '');
     const mode = body.mode === 'link' ? 'link' : 'email';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return fail(400, 'Adresse email invalide.');
-    if (role !== 'super_admin' && role !== 'support') return fail(400, 'Rôle invalide.');
+    if (!['super_admin', 'support', 'partner'].includes(role)) return fail(400, 'Rôle invalide.');
     const redirectTo = typeof body.redirect_to === 'string' && /^https?:\/\/[^\s]+\/reinitialiser-mot-de-passe\?invitation=1$/.test(body.redirect_to)
       ? body.redirect_to : undefined;
 
@@ -89,7 +90,7 @@ Deno.serve(async (req) => {
     if (invErr) return fail(500, 'Invitation impossible. Réessaie.');
     const clearInvitation = () => db.from('admin_invitations').delete().eq('email', email);
 
-    const meta = { business_name: 'Équipe Margee+' };
+    const meta = { business_name: role === 'partner' ? 'Partenaire Margee+' : 'Équipe Margee+' };
     let userId: string | undefined;
     let link: string | undefined;
     if (mode === 'link') {

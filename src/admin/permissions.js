@@ -18,12 +18,14 @@
 export const ROLES = {
   super_admin: { label: 'Super admin', description: 'Accès complet à la plateforme.' },
   support: { label: 'Support', description: 'Lecture, notes internes, signalements et prolongations.' },
+  partner: { label: 'Partenaire', description: 'Lecture seule : chiffres des inscrits, abonnements et revenus, sans données personnelles.' },
 };
 
 const BOTH = ['super_admin', 'support'];
 const SUPER = ['super_admin'];
 
 const RULES = {
+  'partner.view': ['super_admin', 'support', 'partner'], // tableau partenaire (totaux)
   'overview.view': BOTH,
   'merchants.view': BOTH,
   'merchants.notes': BOTH,          // notes internes de l'équipe
@@ -60,4 +62,5 @@ export const ADMIN_NAV = [
   { to: '/admin/plans', icon: 'ti-tags', label: 'Plans et tarifs', permission: 'plans.view' },
   { to: '/admin/parametres', icon: 'ti-settings', label: 'Paramètres et équipe', permission: 'settings.view' },
   { to: '/admin/journal', icon: 'ti-history', label: "Journal d'activité", permission: 'audit.view' },
+  { to: '/admin/partenaire', icon: 'ti-chart-histogram', label: 'Tableau partenaire', permission: 'partner.view' },
 ];

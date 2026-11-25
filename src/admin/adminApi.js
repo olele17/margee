@@ -65,6 +65,14 @@ export async function getAppInstallStats() {
   return data;
 }
 
+// ── TABLEAU PARTENAIRE ───────────────────────────────────────────
+// Totaux uniquement (partner_stats) : partenaire, support, super admin.
+export async function getPartnerStats() {
+  const { data, error } = await sb().rpc('partner_stats');
+  if (error) throw adminError(error, 'Impossible de charger le tableau partenaire.');
+  return data;
+}
+
 // ── E-COMMERÇANTS ────────────────────────────────────────────────
 // Liste paginée côté serveur (admin_list_merchants). Les comptes admins
 // sont exclus par la base.

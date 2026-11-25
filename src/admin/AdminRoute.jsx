@@ -32,6 +32,8 @@ export default function AdminRoute({ children, permission }) {
   if (!ready || role === undefined) return null;
   if (!account) return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
   if (!role) return <Navigate to="/admin/login" replace state={{ denied: true }} />;
+  // Partenaire : uniquement son tableau (lecture seule)
+  if (role === 'partner' && !location.pathname.startsWith('/admin/partenaire')) return <Navigate to="/admin/partenaire" replace />;
   if (permission && !can(role, permission)) return <Navigate to="/admin" replace />;
 
   return (
