@@ -18,6 +18,11 @@ const FEATURES = {
     title: 'Dépenses',
     text: 'Suis tout ce que tu dépenses (loyer, stock, transport, matériel…) et sache si chaque dépense est un actif ou un passif.',
   },
+  challenges: {
+    icon: 'ti-target-arrow',
+    title: 'Challenges',
+    text: "Fixe-toi un objectif (chiffre d'affaires, bénéfice, nombre de ventes) : Margee+ suit ta progression tout seul et te dit le rythme à tenir.",
+  },
   investissements: {
     icon: 'ti-chart-pie',
     title: 'Investissements',

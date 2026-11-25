@@ -7,6 +7,7 @@ import usePlans from '../../hooks/usePlans';
 import { challengeAdvice } from '../../components/ChallengeCard';
 import { MASK, useAmountsHidden } from '../../utils/amountPrivacy';
 import PrivacyToggle from '../../components/PrivacyToggle';
+import { useHasPaidPlan } from '../../components/PaidOnly';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import '../../styles/dashboard.css';
 import '../../styles/notes-challenges.css';
@@ -221,6 +222,7 @@ function ProductDonut({ sales }) {
 // Affiche le challenge actif dont la date de fin est la plus proche.
 function ActiveChallenge({ challenges, sales, ads, products }) {
   const { money } = useMoney();
+  const hasPaidPlan = useHasPaidPlan();
   const active = useMemo(() => challenges
     .map((c) => ({ challenge: c, progress: computeChallengeProgress(c, sales, ads, products) }))
     .filter((i) => i.progress.status === 'ongoing')
@@ -235,7 +237,12 @@ function ActiveChallenge({ challenges, sales, ads, products }) {
           <h2 id="db-challenge-title" className="db-card-title">Fixe-toi un objectif</h2>
           <p className="db-card-sub">Choisis un chiffre d'affaires, un bénéfice ou un nombre de ventes à atteindre : Margee+ suit ta progression tout seul.</p>
         </div>
-        <Link to="/app/challenges" className="btn btn-primary db-challenge-btn"><i className="ti ti-plus" aria-hidden="true" /> Créer un challenge</Link>
+        {hasPaidPlan ? (
+          <Link to="/app/challenges" className="btn btn-primary db-challenge-btn"><i className="ti ti-plus" aria-hidden="true" /> Créer un challenge</Link>
+        ) : (
+          // Essai Free : les challenges se débloquent avec Pro ou Elite
+          <Link to="/abonnement?plan=pro" className="btn btn-primary db-challenge-btn"><i className="ti ti-lock" aria-hidden="true" /> Débloquer avec Pro</Link>
+        )}
       </section>
     );
   }

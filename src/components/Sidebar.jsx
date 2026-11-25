@@ -17,7 +17,7 @@ const MENU_LINKS = [
   { to: '/app/depenses', icon: 'ti-wallet', label: 'Dépenses', paid: true },
   { to: '/app/investissements', icon: 'ti-chart-pie', label: 'Investissements', paid: true },
   { to: '/app/notes', icon: 'ti-notebook', label: 'Notes' },
-  { to: '/app/challenges', icon: 'ti-target-arrow', label: 'Challenges' },
+  { to: '/app/challenges', icon: 'ti-target-arrow', label: 'Challenges', paid: true },
 ];
 
 const GENERAL_LINKS = [

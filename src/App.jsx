@@ -84,7 +84,7 @@ export default function App() {
             <Route path="depenses" element={<PaidOnly feature="depenses"><Expenses /></PaidOnly>} />
             <Route path="investissements" element={<PaidOnly feature="investissements"><Investments /></PaidOnly>} />
             <Route path="notes" element={<Notes />} />
-            <Route path="challenges" element={<Challenges />} />
+            <Route path="challenges" element={<PaidOnly feature="challenges"><Challenges /></PaidOnly>} />
             <Route path="documents" element={<Documents />} />
             <Route path="documents/nouveau" element={<DocumentEditor />} />
             <Route path="documents/:id" element={<DocumentEditor />} />
