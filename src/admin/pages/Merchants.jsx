@@ -15,7 +15,7 @@ const COLUMNS = [
   { key: 'email', label: 'Contact', sortable: true },
   { key: 'plan_id', label: 'Plan', sortable: true },
   { key: 'status', label: 'Statut', sortable: true },
-  { key: 'ends_at', label: 'Fin essai / abonnement', sortable: true },
+  { key: 'ends_at', label: "Fin d'abonnement", sortable: true },
   { key: 'created_at', label: 'Inscrit le', sortable: true },
   { key: 'last_login_at', label: 'Dernière connexion', sortable: true },
 ];
@@ -94,10 +94,10 @@ export default function Merchants() {
     try {
       const all = await listAllMerchants(filters);
       downloadCsv(`margee-e-commercants-${new Date().toISOString().slice(0, 10)}.csv`,
-        ['Boutique', 'Propriétaire', 'Email', 'Téléphone', 'Plan', 'Statut', 'Fin essai / abonnement', 'Inscrit le', 'Dernière connexion', 'Signalements ouverts'],
+        ['Boutique', 'Propriétaire', 'Email', 'Téléphone', 'Plan', 'Statut', "Fin d'abonnement", 'Inscrit le', 'Dernière connexion', 'Signalements ouverts'],
         all.map((r) => [
           r.business_name, r.owner_name || '', r.email, r.phone || '', planLabel(r),
-          SUBSCRIPTION_STATUSES[r.status]?.label || r.status, r.ends_at ? dateFr(r.ends_at) : '',
+          SUBSCRIPTION_STATUSES[r.status]?.label || r.status, r.ends_at && r.plan_id !== 'free' ? dateFr(r.ends_at) : '',
           dateFr(r.created_at), r.last_login_at ? dateFr(r.last_login_at) : 'Jamais', r.open_flags,
         ]));
     } catch (e) {
@@ -204,7 +204,7 @@ export default function Merchants() {
                   </td>
                   <td className="db-nowrap">{planLabel(r)}</td>
                   <td><SubscriptionBadge status={r.status} /></td>
-                  <td className="db-nowrap">{r.ends_at ? dateFr(r.ends_at) : '—'}</td>
+                  <td className="db-nowrap">{r.ends_at && r.plan_id !== 'free' ? dateFr(r.ends_at) : '—'}</td>
                   <td className="db-nowrap">{dateFr(r.created_at)}</td>
                   <td className="db-nowrap">{r.last_login_at ? dateFr(r.last_login_at) : 'Jamais'}</td>
                   <td>

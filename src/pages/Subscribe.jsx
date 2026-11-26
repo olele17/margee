@@ -24,11 +24,11 @@ export default function Subscribe() {
   const [billing, setBilling] = useState('monthly'); // monthly | yearly
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-  // L'essai gratuit ne se fait qu'une fois : une fois utilisé (ou pendant
-  // l'essai, ou avec un plan payant en cours), seuls les plans payants
-  // sont proposés.
+  // Le plan Free ne se choisit qu'une fois : déjà dessus, déjà utilisé
+  // (puis passé au payant) ou avec un plan payant en cours, seuls les
+  // plans payants sont proposés.
   const sub = account?.subscription || {};
-  const trialUsed = !!sub.trialEndsAt && !(sub.status === 'trial' && new Date(sub.trialEndsAt) > new Date());
+  const trialUsed = !!sub.trialEndsAt && sub.status !== 'trial';
   const hideFree = trialUsed || offer.trialActive || offer.paidActive;
   const offered = Object.entries(plans).filter(([, p]) => !(hideFree && p.price === 0));
   // Plan choisi encore proposé ? Sinon le premier plan payant proposé.
@@ -80,9 +80,9 @@ export default function Subscribe() {
   const subtitle = offer.paidActive
     ? `Ton plan actuel : ${offer.currentLabel}, valable jusqu'au ${endLabel}.`
     : offer.trialActive
-      ? `Essai gratuit en cours : encore ${offer.daysLeft} jour${offer.daysLeft > 1 ? 's' : ''}.`
+      ? 'Tu es sur le plan Free, sans limite de durée. Passe à Pro ou Elite quand tu veux.'
       : trialUsed
-        ? 'Ton essai gratuit est terminé : choisis Pro ou Elite pour continuer.'
+        ? 'Tu as déjà utilisé le plan Free : choisis Pro ou Elite pour continuer.'
         : 'Tu peux changer de plan à tout moment.';
 
   return (

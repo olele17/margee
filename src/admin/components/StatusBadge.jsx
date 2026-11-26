@@ -4,7 +4,7 @@
  */
 const SUBSCRIPTION = {
   active: { label: 'Actif', cls: 'ok', icon: 'ti-circle-check' },
-  trial: { label: 'Essai', cls: 'pending', icon: 'ti-hourglass' },
+  trial: { label: 'Free', cls: 'pending', icon: 'ti-hourglass' },
   expired: { label: 'Expiré', cls: 'off', icon: 'ti-clock-x' },
   suspended: { label: 'Suspendu', cls: 'dark', icon: 'ti-ban' },
   pending: { label: 'En attente', cls: 'progress', icon: 'ti-dots' },

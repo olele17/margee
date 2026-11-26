@@ -45,7 +45,7 @@ function PlatformSettings({ canEdit, onToast }) {
       <div className="adm-set-head">
         <span className="adm-set-icon" aria-hidden="true"><i className="ti ti-user-plus" /></span>
         <div>
-          <h2 id="set-title" className="adm-set-title">Inscriptions et essai gratuit</h2>
+          <h2 id="set-title" className="adm-set-title">Inscriptions</h2>
           <div className="adm-sub">Dernière modification : {saved.updatedAt ? dateTimeFr(saved.updatedAt) : '—'}</div>
         </div>
       </div>
@@ -72,14 +72,9 @@ function PlatformSettings({ canEdit, onToast }) {
             <div className="adm-sub">{msg.length} / 300</div>
             {errors.message && <div className="adm-field-err" role="alert">{errors.message}</div>}
           </div>
-          <div className="field">
-            <label htmlFor="set-trial">Durée de l'essai gratuit (jours)</label>
-            <input id="set-trial" type="number" min="1" max="30" value={form.trialDays} disabled={!canEdit} onChange={(e) => { const v = e.target.value === '' ? '' : Number(e.target.value); setForm((s) => ({ ...s, trialDays: v })); }} aria-invalid={!!errors.trial} />
-            {errors.trial && <div className="adm-field-err" role="alert">{errors.trial}</div>}
-          </div>
           <div className="adm-plan-note">
             <i className="ti ti-info-circle" aria-hidden="true" />
-            <span>S'applique seulement aux <b>nouveaux inscrits</b> : les essais en cours gardent leur date de fin.</span>
+            <span>Le plan Free n'a pas de date de fin : chaque compte garde l'accès et dispose de 3 essais (reçus, factures ou devis). Ensuite, il passe à Pro ou Elite.</span>
           </div>
         </div>
 

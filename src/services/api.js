@@ -335,9 +335,10 @@ export const annualPrice = (plan, months = ANNUAL_MONTHS_PAID) => plan.price * m
 //   plans : plans ACTIFS, dans l'ordre d'affichage (landing, abonnement)
 //   all   : tous les plans, actifs ou non (abonnement en cours, quotas)
 function withTrialLine(features, trialDays) {
-  const line = `Essai gratuit de ${trialDays} jour${trialDays > 1 ? 's' : ''}`;
-  return [line, ...features.filter((f) => !/^Essai gratuit de \d+ jours?$/.test(f))];
+  // Le plan Free n'a plus de durée : ancienne ligne « Essai gratuit de N jours » retirée
+  return ['Sans limite de durée', ...features.filter((f) => !FREE_AUTO_LINE.test(f))];
 }
+export const FREE_AUTO_LINE = /^(Essai gratuit de \d+ jours?|Sans limite de durée)$/;
 
 export const FALLBACK_CATALOG = {
   plans: PLANS,
@@ -484,10 +485,10 @@ export async function getPaymentStatus(reference) {
 
 export function isSubscriptionActive(account) {
   if (!account) return false;
-  const { status, expiresAt, trialEndsAt } = account.subscription || {};
+  const { status, expiresAt } = account.subscription || {};
   const now = new Date();
   if (status === 'active') return !expiresAt || new Date(expiresAt) > now;
-  if (status === 'trial') return !!trialEndsAt && new Date(trialEndsAt) > now;
+  if (status === 'trial') return true; // plan Free : pas de date de fin, seulement les 3 essais
   return false;
 }
 

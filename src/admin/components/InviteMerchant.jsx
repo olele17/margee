@@ -5,7 +5,7 @@ import { inviteMerchant } from '../adminApi';
 const PLANS = [
   { id: 'pro', label: 'Pro' },
   { id: 'elite', label: 'Elite' },
-  { id: 'free', label: 'Free (essai gratuit)' },
+  { id: 'free', label: 'Free (gratuit)' },
 ];
 const DURATIONS = {
   paid: [[30, '1 mois'], [60, '2 mois'], [90, '3 mois'], [180, '6 mois'], [365, '1 an']],
@@ -90,19 +90,19 @@ export default function InviteMerchant({ onDone }) {
               {PLANS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </div>
-          <div className="field">
-            <label htmlFor="im-days">{form.plan === 'free' ? "Durée de l'essai" : 'Offert pendant'}</label>
+          {form.plan !== 'free' && <div className="field">
+            <label htmlFor="im-days">Offert pendant</label>
             <select id="im-days" value={form.days} onChange={(e) => set({ days: Number(e.target.value) })}>
               {durations.map(([d, l]) => <option key={d} value={d}>{l}</option>)}
             </select>
-          </div>
+          </div>}
         </div>
         <fieldset className="adm-invite-mode">
           <legend>Envoi</legend>
           <label className="adm-check"><input type="radio" name="im-mode" checked={form.mode === 'link'} onChange={() => set({ mode: 'link' })} /> Lien à envoyer moi-même (WhatsApp, SMS…)</label>
           <label className="adm-check"><input type="radio" name="im-mode" checked={form.mode === 'email'} onChange={() => set({ mode: 'email' })} /> E-mail envoyé par Margee+</label>
         </fieldset>
-        {emailOk && <p className="adm-sub">Résumé : {planLabel} {form.plan === 'free' ? `(essai de ${durationLabel})` : `offert pendant ${durationLabel}`}.</p>}
+        {emailOk && <p className="adm-sub">Résumé : {planLabel} {form.plan === 'free' ? '(sans date de fin, 3 essais offerts)' : `offert pendant ${durationLabel}`}.</p>}
       </ActionDialog>
     </>
   );

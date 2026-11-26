@@ -25,7 +25,7 @@ function fileToDataUrl(file) {
 
 const MAX_IMAGE_BYTES = 1024 * 1024; // 1 Mo : les images sont stockées dans le navigateur
 
-const STATUS_LABELS = { active: 'Actif', trial: 'Essai gratuit', pending: 'En attente', expired: 'Expiré', suspended: 'Suspendu' };
+const STATUS_LABELS = { active: 'Actif', trial: 'Gratuit', pending: 'En attente', expired: 'Expiré', suspended: 'Suspendu' };
 
 export default function Settings() {
   const { account, refresh } = useAuth();
@@ -374,7 +374,7 @@ export default function Settings() {
                   {plan.price > 0 && (yearly ? ` — ${fmt(annualPrice(plan, catalog.annualMonths))} / an` : ` — ${fmt(plan.price)} / mois`)}
                 </div>
               )}
-              {offer.trialActive && sub.trialEndsAt && <div><b>Essai jusqu'au :</b> {new Date(sub.trialEndsAt).toLocaleDateString('fr-FR')}</div>}
+              {offer.trialActive && <div><b>Durée :</b> sans limite (3 essais offerts)</div>}
               {sub.expiresAt && <div><b>{offer.paidActive ? 'Valable jusqu\'au' : 'Expiré le'} :</b> {new Date(sub.expiresAt).toLocaleDateString('fr-FR')}</div>}
             </div>
             {offer.action && (

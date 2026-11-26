@@ -290,19 +290,10 @@ function QuotaCard({ account, usage, trial }) {
   const nextPlan = (isFree ? all.pro : all.elite) || all.pro;
   const scopeLabel = quota.scope === 'month' ? 'ce mois-ci' : 'au total';
 
-  // Essai gratuit : jours restants (l'essai finit au bout des jours OU des reçus)
-  const sub = account?.subscription || {};
-  const trialDaysLeft = sub.status === 'trial' && sub.trialEndsAt
-    ? Math.max(Math.ceil((new Date(sub.trialEndsAt) - new Date()) / 86400000), 0)
-    : null;
-  const daysLabel = trialDaysLeft === null ? '' : `${trialDaysLeft} jour${trialDaysLeft > 1 ? 's' : ''}`;
-
+  // Plan Free : pas de date de fin, la seule limite est le nombre d'essais
   let title;
   let text;
-  if (trialDaysLeft !== null && !quota.reached) {
-    title = `Essai gratuit : encore ${daysLabel} · ${quota.used} / ${quota.limit} essais utilisés`;
-    text = `À la fin de l'essai, passe à ${nextPlan.label} (${fmt(nextPlan.price)} / mois) pour continuer sans interruption.`;
-  } else if (quota.reached) {
+  if (quota.reached) {
     title = isFree ? `Tu as utilisé tes ${quota.limit} essais gratuits` : `Limite de ${quota.limit} reçus atteinte ce mois-ci`;
     text = isFree
       ? `Passe à ${nextPlan.label} (${fmt(nextPlan.price)} / mois) pour continuer à créer tes reçus, factures et devis.`
@@ -317,7 +308,7 @@ function QuotaCard({ account, usage, trial }) {
     text = `Passe à ${nextPlan.label} pour ${nextPlan.receiptLimit ? `${nextPlan.receiptLimit} reçus par mois` : 'des reçus illimités'}.`;
   }
 
-  const tone = quota.reached ? 'reached' : (quota.nearLimit || (trialDaysLeft !== null && trialDaysLeft <= 1)) ? 'near' : 'info';
+  const tone = quota.reached ? 'reached' : quota.nearLimit ? 'near' : 'info';
   return (
     <section className={`db-quota db-quota--${tone}`} aria-labelledby="db-quota-title" role={quota.reached ? 'alert' : undefined}>
       <span className="db-quota-icon" aria-hidden="true">

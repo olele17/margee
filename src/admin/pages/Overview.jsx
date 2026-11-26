@@ -112,6 +112,7 @@ export default function Overview() {
   useEffect(() => { load(); }, [load]);
 
   const c = data?.counts || {};
+  const expiring = (data?.expiring_7_days || []).filter((x) => x.status !== 'trial');
   const rev = data?.revenue || {};
   const change = rev.change_percent;
 
@@ -167,17 +168,18 @@ export default function Overview() {
             <AppInstalls stats={installs} />
           </div>
 
+          {/* Plan Free : jamais expiré, seuls les abonnements payants figurent ici */}
           <section className="db-card db-recent" aria-labelledby="adm-exp-title">
             <div className="db-recent-head">
               <h2 id="adm-exp-title" className="db-recent-title">Expirent dans les 7 jours</h2>
-              <span className="adm-head-count">{num((data.expiring_7_days || []).length)}</span>
+              <span className="adm-head-count">{num(expiring.length)}</span>
             </div>
             <div className="db-table-scroll">
               <table className="db-table">
                 <thead><tr><th>Boutique</th><th>Email</th><th>Plan</th><th>Statut</th><th>Fin</th><th>Reste</th><th><span className="sr-only">Fiche</span></th></tr></thead>
                 <tbody>
-                  {(data.expiring_7_days || []).length === 0 && <tr><td colSpan={7}><div className="db-empty">Aucun essai ni abonnement n'expire dans les 7 jours.</div></td></tr>}
-                  {(data.expiring_7_days || []).map((x) => {
+                  {expiring.length === 0 && <tr><td colSpan={7}><div className="db-empty">Aucun abonnement n'expire dans les 7 jours.</div></td></tr>}
+                  {expiring.map((x) => {
                     const left = daysUntil(x.ends_at);
                     return (
                       <tr key={x.account_id}>

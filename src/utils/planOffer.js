@@ -2,10 +2,10 @@
  * Offre d'abonnement à proposer à l'e-commerçant connecté (barre latérale,
  * Paramètres, page Abonnement). Une seule source pour toutes les pages.
  *
- *   essai en cours        → Passer à Pro
+ *   plan Free (sans fin)  → Passer à Pro
  *   Pro actif             → Passer à Elite
  *   Elite actif           → Prolonger Elite
- *   essai fini / expiré   → Choisir un plan (ou renouveler le plan payant)
+ *   plan payant expiré    → Renouveler le plan payant
  *
  * Seuls les plans actifs du catalogue (table plans) sont proposés.
  * Le changement de plan est décidé et appliqué côté serveur au paiement :
@@ -21,10 +21,11 @@ export function getPlanOffer(account, catalog) {
   const current = sub.plan || null;
   const currentPlan = current ? all[current] : null;
   const paid = !!currentPlan && currentPlan.price > 0;
-  const trialActive = sub.status === 'trial' && !!sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > now;
+  // Plan Free : jamais expiré (seule limite : les 3 essais)
+  const trialActive = sub.status === 'trial';
   const paidActive = sub.status === 'active' && paid && (!sub.expiresAt || new Date(sub.expiresAt).getTime() > now);
   const legacyFree = sub.status === 'active' && current === 'free';
-  const endsAt = trialActive ? sub.trialEndsAt : (paidActive ? sub.expiresAt : null);
+  const endsAt = paidActive ? sub.expiresAt : null;
   const daysLeft = endsAt ? Math.max(Math.ceil((new Date(endsAt).getTime() - now) / DAY), 0) : null;
 
   // Plans payants proposés, du moins cher au plus cher

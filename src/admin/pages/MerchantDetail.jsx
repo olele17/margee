@@ -101,9 +101,10 @@ export default function MerchantDetail() {
   const t = data.totals || {};
   const suspended = s.stored_status === 'suspended';
   const isTrialPlan = s.plan_id === 'free';
-  const endDate = isTrialPlan ? s.trial_ends_at : s.expires_at;
+  // Plan Free : pas de date de fin, rien à prolonger
+  const endDate = isTrialPlan ? null : s.expires_at;
   const canExtend = can(role, 'merchants.extend') && !suspended && s.plan_id
-    && (isTrialPlan ? !!s.trial_ends_at : can(role, 'merchants.changePlan'));
+    && !isTrialPlan && can(role, 'merchants.changePlan');
   const openFlags = (data.flags || []).filter((f) => !f.resolved_at);
 
   const sideAction = async (fn, after) => {
@@ -186,11 +187,11 @@ export default function MerchantDetail() {
         <section className="db-card" aria-labelledby="adm-sub-title">
           <div className="db-card-head"><h2 id="adm-sub-title" className="db-card-title">Abonnement</h2></div>
           <dl className="adm-infos">
-            <Info label="Plan">{s.plan_id ? `${PLAN_LABELS[s.plan_id]}${isTrialPlan ? ' (essai gratuit)' : ''}` : 'Aucun plan choisi'}</Info>
+            <Info label="Plan">{s.plan_id ? `${PLAN_LABELS[s.plan_id]}${isTrialPlan ? ' (gratuit)' : ''}` : 'Aucun plan choisi'}</Info>
             <Info label="Facturation">{s.billing === 'yearly' ? 'Annuelle' : s.billing === 'monthly' ? 'Mensuelle' : '—'}</Info>
             <Info label="Statut"><SubscriptionBadge status={s.status} /></Info>
-            <Info label={isTrialPlan ? "Fin de l'essai" : "Fin de l'abonnement"}>
-              {endDate ? <>{dateFr(endDate)} <span className="adm-sub">({leftLabel(endDate)})</span></> : (s.plan_id === 'free' ? 'Ancien compte Free sans date de fin' : '—')}
+            <Info label="Fin de l'abonnement">
+              {endDate ? <>{dateFr(endDate)} <span className="adm-sub">({leftLabel(endDate)})</span></> : (isTrialPlan ? 'Sans date de fin (3 essais offerts)' : '—')}
             </Info>
             <Info label="Reçus émis ce mois">{num(t.receipts_this_month)}</Info>
             <Info label="Dernière modification">{dateTimeFr(s.updated_at)}</Info>
@@ -381,7 +382,7 @@ export default function MerchantDetail() {
       <ActionDialog
         open={dialog === 'extend'}
         icon="ti-calendar-plus"
-        title={isTrialPlan ? "Prolonger l'essai" : "Prolonger l'abonnement"}
+        title="Prolonger l'abonnement"
         message={endDate
           ? `Fin actuelle : ${dateFr(endDate)} (${leftLabel(endDate)}). Les jours s'ajoutent à cette date, ou à aujourd'hui si elle est passée.`
           : "Les jours s'ajoutent à partir d'aujourd'hui."}

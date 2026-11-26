@@ -5,7 +5,7 @@ import { can } from '../permissions';
 import { num, fcfa, dateTimeFr } from '../format';
 import ActionDialog from '../components/ActionDialog';
 import { PlanCard } from '../../pages/Landing';
-import { mapPlanRow } from '../../services/api';
+import { mapPlanRow, FREE_AUTO_LINE } from '../../services/api';
 import usePlans, { reloadPlans } from '../../hooks/usePlans';
 import '../../styles/dashboard.css';
 
@@ -16,10 +16,10 @@ function toForm(row) {
     price: String(row.price ?? 0),
     oldPrice: row.old_price == null ? '' : String(row.old_price),
     durationDays: row.duration_days == null ? '' : String(row.duration_days),
-    // Free : la ligne « Essai gratuit de N jours » est ajoutée à l'affichage
-    // d'après la durée d'essai des paramètres ; elle n'est pas saisie ici.
+    // Free : la ligne « Sans limite de durée » est ajoutée à l'affichage ;
+    // elle n'est pas saisie ici.
     features: (row.features || [])
-      .filter((f) => !(Number(row.price) === 0 && /^Essai gratuit de \d+ jours?$/.test(f)))
+      .filter((f) => !(Number(row.price) === 0 && FREE_AUTO_LINE.test(f)))
       .join('\n'),
     sortOrder: String(row.sort_order ?? 0),
     highlight: !!row.highlight,
@@ -145,7 +145,7 @@ function PlanEditor({ row, stats, canEdit, otherPaidActive, annualMonths, trialD
             {free ? (
               <div className="adm-plan-note">
                 <i className="ti ti-info-circle" aria-hidden="true" />
-                <span>Le plan Free reste gratuit et toujours proposé. Sa durée d'essai ({trialDays} jour{trialDays > 1 ? 's' : ''}) se règle dans <b>Paramètres et équipe</b>.</span>
+                <span>Le plan Free reste gratuit, toujours proposé et sans date de fin. Sa limite est le nombre d'essais ci-dessous.</span>
               </div>
             ) : (
               <>
@@ -173,7 +173,7 @@ function PlanEditor({ row, stats, canEdit, otherPaidActive, annualMonths, trialD
             <div className="field adm-plan-wide">
               <label htmlFor={id('features')}>Avantages (un par ligne)</label>
               <textarea id={id('features')} rows={6} value={form.features} onChange={set('features')} disabled={disabled} aria-invalid={!!errors.features} />
-              {free && <div className="adm-sub">La ligne « Essai gratuit de {trialDays} jours » est ajoutée automatiquement en tête.</div>}
+              {free && <div className="adm-sub">La ligne « Sans limite de durée » est ajoutée automatiquement en tête.</div>}
               <FieldError id={id('features-err')}>{errors.features}</FieldError>
             </div>
             <div className="adm-plan-wide adm-plan-checks">

@@ -138,7 +138,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
           <div className="sidebar-cta-icon" aria-hidden="true"><i className="ti ti-crown" /></div>
           <div className="sidebar-cta-label">
             {offer.trialActive
-              ? `Essai gratuit · ${offer.daysLeft} jour${offer.daysLeft > 1 ? 's' : ''}`
+              ? 'Plan Free'
               : offer.paidActive
                 ? `Plan ${offer.currentLabel}${offer.endsAt ? ` · jusqu'au ${new Date(offer.endsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`
                 : 'Abonnement expiré'}
