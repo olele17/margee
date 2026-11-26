@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useBusinessData from '../../hooks/useBusinessData';
-import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, computeChallengeProgress, CHALLENGE_TYPES, computeReceiptQuota } from '../../utils/calc';
+import { computeStats, groupByMonth, fmt, fmtN, monthLabel, thisMonth, today, computeChallengeProgress, CHALLENGE_TYPES, computeReceiptQuota, stockStatus, stockSummary, STOCK_STATUS } from '../../utils/calc';
 import * as api from '../../services/api';
 import usePlans from '../../hooks/usePlans';
 import { challengeAdvice } from '../../components/ChallengeCard';
@@ -11,6 +11,7 @@ import { useHasPaidPlan } from '../../components/PaidOnly';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import '../../styles/dashboard.css';
 import '../../styles/notes-challenges.css';
+import '../../styles/stock.css';
 
 /* ── Outils de dates (format AAAA-MM-JJ, heure locale) ──────── */
 const pad = (n) => String(n).padStart(2, '0');
@@ -339,6 +340,50 @@ function QuotaCard({ account, usage, trial }) {
   );
 }
 
+/* ── Stock : valeur, alertes, à réapprovisionner ─────────────── */
+function StockCard({ products, money }) {
+  const paid = useHasPaidPlan();
+  if (!paid) return null;
+  const sum = stockSummary(products);
+  if (!sum.tracked) return null;
+  const restock = products
+    .filter((p) => ['out', 'low'].includes(stockStatus(p)))
+    .sort((a, b) => STOCK_STATUS[stockStatus(a)].rank - STOCK_STATUS[stockStatus(b)].rank || a.stockQty - b.stockQty)
+    .slice(0, 3);
+  return (
+    <section className="db-card db-stock" aria-labelledby="db-stock-title">
+      <div className="db-stock-main">
+        <span className="db-stock-icon" aria-hidden="true"><i className="ti ti-building-warehouse" /></span>
+        <div>
+          <h2 id="db-stock-title" className="db-stock-title">Stock</h2>
+          <div className="db-stock-value">{money(sum.costValue)}</div>
+          <div className="db-stock-sub">investis dans ton stock · {fmtN(sum.out)} rupture{sum.out > 1 ? 's' : ''} · {fmtN(sum.low)} stock{sum.low > 1 ? 's' : ''} bas</div>
+        </div>
+        <Link to="/app/stock" className="btn btn-outline btn-sm db-stock-link">Voir le stock <i className="ti ti-arrow-right" aria-hidden="true" /></Link>
+      </div>
+      <div className="db-stock-restock">
+        <h3>À réapprovisionner</h3>
+        {restock.length === 0 ? (
+          <p className="db-stock-ok"><i className="ti ti-circle-check" aria-hidden="true" /> Tout est en stock.</p>
+        ) : (
+          <ul>
+            {restock.map((p) => {
+              const st = stockStatus(p);
+              return (
+                <li key={p.id}>
+                  <span className="db-stock-name">{p.name}</span>
+                  <span className="db-stock-qty">{fmtN(p.stockQty)}</span>
+                  <span className={`status-badge ${STOCK_STATUS[st].badge}`}>{STOCK_STATUS[st].label}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { money } = useMoney();
@@ -491,6 +536,9 @@ export default function Dashboard() {
           negative={stats.roi < 0}
         />
       </div>
+
+      {/* ── Stock (Pro / Elite, produits suivis) ─────────────── */}
+      <StockCard products={products} money={money} />
 
       {/* ── Challenge en cours ──────────────────────────────── */}
       <ActiveChallenge challenges={challenges} sales={sales} ads={ads} products={products} />

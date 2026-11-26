@@ -11,6 +11,8 @@ import { fmt } from '../../utils/calc';
 import SignaturePad from '../../components/SignaturePad';
 import InstallButton from '../../pwa/InstallButton';
 import useInstallPrompt from '../../pwa/useInstallPrompt';
+import { useHasPaidPlan } from '../../components/PaidOnly';
+import '../../styles/stock.css';
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -286,6 +288,9 @@ export default function Settings() {
             )}
           </div>
 
+          {/* ── Stock (Pro / Elite) : réglage enregistré tout de suite ── */}
+          <StockSettings account={account} onSaved={refresh} />
+
           {/* ── Enregistrer ────────────────────────────────────── */}
           <div className="settings-save">
             {err && <div className="settings-err" role="alert">{err}</div>}
@@ -388,6 +393,35 @@ export default function Settings() {
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+/** Réglage du stock : autoriser la vente quand le stock est à zéro. */
+function StockSettings({ account, onSaved }) {
+  const paid = useHasPaidPlan();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  if (!paid) return null;
+  const on = !!account?.allowNegativeStock;
+  const toggle = async (e) => {
+    setErr(''); setBusy(true);
+    try { await api.updateStockSettings(account.id, { allowNegativeStock: e.target.checked }); await onSaved(); }
+    catch (e2) { setErr(e2.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="card" style={{ marginBottom: 18 }}>
+      <div className="form-card-title" style={{ marginBottom: 8 }}><i className="ti ti-building-warehouse" /> Stock</div>
+      <label className="stock-switch">
+        <input type="checkbox" role="switch" checked={on} disabled={busy} onChange={toggle} />
+        <span className="stock-switch-track" aria-hidden="true" />
+        <span>
+          <strong>Autoriser la vente même si le stock est à zéro</strong>
+          <span className="stock-switch-sub">Désactivé : une vente est refusée quand il ne reste plus assez d'articles. Activé : la vente passe et le stock devient négatif.</span>
+        </span>
+      </label>
+      {err && <div className="stock-err" role="alert">{err}</div>}
     </div>
   );
 }

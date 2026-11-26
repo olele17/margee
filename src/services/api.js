@@ -77,6 +77,7 @@ function mapAccount(profile, sub) {
     createdAt: profile.created_at,
     lastLoginAt: profile.last_login_at,
     savingsRulePercent: profile.savings_rule_percent,
+    allowNegativeStock: !!profile.allow_negative_stock,
     subscription: {
       status: sub?.status || 'pending',
       plan: sub?.plan_id || null,
@@ -560,11 +561,25 @@ export async function saveProduct(accountId, product) {
     cost_price: toAmount(product.costPrice),
     price: toAmount(product.price),
   };
+  if (product.alertThreshold !== undefined && product.alertThreshold !== '') {
+    row.alert_threshold = Math.max(0, Math.round(Number(product.alertThreshold) || 0));
+  }
   const sb = requireSupabase();
-  const { error } = product.id
-    ? await sb.from('products').update(row).eq('id', product.id).eq('account_id', accountId)
-    : await sb.from('products').insert(row);
-  if (error) throw toDataError(error, "Impossible d'enregistrer le produit. Réessaie.");
+  let id = product.id;
+  if (id) {
+    const { error } = await sb.from('products').update(row).eq('id', id).eq('account_id', accountId);
+    if (error) throw toDataError(error, "Impossible d'enregistrer le produit. Réessaie.");
+  } else {
+    const { data, error } = await sb.from('products').insert(row).select('id').single();
+    if (error) throw toDataError(error, "Impossible d'enregistrer le produit. Réessaie.");
+    id = data.id;
+  }
+  // Suivi du stock : décidé par les fonctions SQL (jamais d'écriture directe)
+  if (product.trackStock !== undefined) {
+    if (product.trackStock && !product.wasTracked) await setInitialStock(accountId, id, product.initialStock || 0, null);
+    if (!product.trackStock && product.wasTracked) await disableStockTracking(accountId, id);
+  }
+  notifyStockChanged();
   return listProducts(accountId);
 }
 
@@ -582,6 +597,26 @@ export async function deleteProduct(accountId, productId) {
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────
+// Prévient la Sidebar (badge) qu'un stock a pu changer.
+export const STOCK_CHANGED_EVENT = 'margee:stock-changed';
+function notifyStockChanged() {
+  try { window.dispatchEvent(new Event(STOCK_CHANGED_EVENT)); } catch { /* hors navigateur */ }
+}
+
+/** Nombre de produits suivis en rupture ou en stock bas (badge du menu). */
+export async function getStockAlertCount(accountId) {
+  const { data, error } = await requireSupabase().from('products').select('stock_qty, alert_threshold')
+    .eq('account_id', accountId).eq('is_archived', false).eq('track_stock', true);
+  if (error) return 0;
+  return (data || []).filter((p) => p.stock_qty <= p.alert_threshold).length;
+}
+
+/** Paramètre du compte : vendre même si le stock est à zéro. */
+export async function updateStockSettings(accountId, { allowNegativeStock }) {
+  const { error } = await requireSupabase().from('profiles')
+    .update({ allow_negative_stock: !!allowNegativeStock }).eq('id', accountId);
+  if (error) throw toDataError(error, "Impossible d'enregistrer ce réglage. Réessaie.");
+}
 // Le stock est décidé par la base : chaque modification passe par une
 // fonction SQL (transaction + verrou sur le produit). L'écran ne fait
 // que lire products.stock_qty et le journal stock_moves.
@@ -617,11 +652,13 @@ export async function setInitialStock(accountId, productId, quantity, unitCost =
     p_unit_cost: unitCost === null || unitCost === '' ? null : toAmount(unitCost),
   });
   if (error) throw toDataError(error, "Impossible d'activer le suivi du stock. Réessaie.");
+  notifyStockChanged();
 }
 
 export async function disableStockTracking(accountId, productId) {
   const { error } = await requireSupabase().rpc('disable_stock_tracking', { p_product_id: productId });
   if (error) throw toDataError(error, "Impossible d'arrêter le suivi du stock. Réessaie.");
+  notifyStockChanged();
 }
 
 export async function addStockEntry(accountId, entry) {
@@ -635,6 +672,7 @@ export async function addStockEntry(accountId, entry) {
     p_update_cost: !!entry.updateCost,
   });
   if (error) throw toDataError(error, "Impossible d'enregistrer l'entrée de stock. Réessaie.");
+  notifyStockChanged();
   return { stockQty: Number(data.stock_qty), weightedCost: Number(data.weighted_cost), costPrice: Number(data.cost_price), costUpdated: !!data.cost_updated };
 }
 
@@ -646,6 +684,7 @@ export async function adjustStock(accountId, { productId, realQuantity, reason, 
     p_note: note || null,
   });
   if (error) throw toDataError(error, "Impossible d'ajuster le stock. Réessaie.");
+  notifyStockChanged();
   return { stockQty: Number(data.stock_qty), delta: Number(data.delta) };
 }
 
@@ -688,6 +727,7 @@ export async function recordSale(accountId, sale) {
     p_sold_on: sale.date || null,
   });
   if (error) throw toDataError(error, "Impossible d'enregistrer la vente. Réessaie.");
+  notifyStockChanged();
   return mapSale(data);
 }
 
@@ -695,6 +735,7 @@ export async function deleteSale(accountId, saleId) {
   // Fonction SQL : supprime la vente et remet le stock (même transaction)
   const { error } = await requireSupabase().rpc('delete_sale', { p_sale_id: saleId });
   if (error) throw toDataError(error, 'Impossible de supprimer la vente. Réessaie.');
+  notifyStockChanged();
   return listSales(accountId);
 }
 

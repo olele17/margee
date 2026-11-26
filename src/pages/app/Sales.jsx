@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import useBusinessData from '../../hooks/useBusinessData';
 import * as api from '../../services/api';
-import { fmt, today, selfPaidDelivery } from '../../utils/calc';
+import { fmt, fmtN, today, selfPaidDelivery, stockStatus } from '../../utils/calc';
 import { downloadReceiptPdf } from '../../utils/receiptPdf';
 import { SALE_RECORDED_EVENT } from '../../pwa/InstallPrompt';
 import { money, useAmountsHidden } from '../../utils/amountPrivacy';
 import PrivacyToggle from '../../components/PrivacyToggle';
 import FreeTrialNotice from '../../components/FreeTrialNotice';
+import '../../styles/stock.css';
 
 const blank = {
   date: today(), productId: '', qty: 1,
@@ -21,6 +22,8 @@ export default function Sales() {
   const [form, setForm] = useState(blank);
   const [open, setOpen] = useState(false);
   const [lastReceipt, setLastReceipt] = useState(null);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(searchParams.get('q') || '');
 
@@ -41,25 +44,40 @@ export default function Sales() {
   }, [searchParams, setSearchParams]);
 
   const product = products.find((p) => p.id === form.productId);
+  // Stock : la base décide (record_sale refuse si le stock manque) ;
+  // l'écran prévient avant et bloque le bouton.
+  const allowNegative = !!account?.allowNegativeStock;
+  const overStock = !!product?.trackStock && Number(form.qty || 0) > product.stockQty;
+  const blocked = overStock && !allowNegative;
   const previewProfit = product
     ? Number(form.qty || 0) * (product.price - product.costPrice) - (form.deliveryPaidByClient ? 0 : Number(form.deliveryCost || 0))
     : 0;
 
   const submit = async () => {
-    if (!product || !form.qty) return;
-    const sale = await api.recordSale(account.id, {
-      date: form.date,
-      productId: product.id,
-      productName: product.name,
-      qty: Number(form.qty),
-      costPrice: Number(product.costPrice),
-      price: Number(product.price),
-      clientName: form.clientName,
-      clientPhone: form.clientPhone,
-      clientAddress: form.clientAddress,
-      deliveryCost: Number(form.deliveryCost || 0),
-      deliveryPaidByClient: !!form.deliveryPaidByClient,
-    });
+    if (!product || !form.qty || blocked) return;
+    setErr(''); setBusy(true);
+    let sale;
+    try {
+      sale = await api.recordSale(account.id, {
+        date: form.date,
+        productId: product.id,
+        productName: product.name,
+        qty: Number(form.qty),
+        costPrice: Number(product.costPrice),
+        price: Number(product.price),
+        clientName: form.clientName,
+        clientPhone: form.clientPhone,
+        clientAddress: form.clientAddress,
+        deliveryCost: Number(form.deliveryCost || 0),
+        deliveryPaidByClient: !!form.deliveryPaidByClient,
+      });
+    } catch (e) {
+      setErr(e.message);
+      setBusy(false);
+      reload();
+      return;
+    }
+    setBusy(false);
     setLastReceipt(sale);
     window.dispatchEvent(new Event(SALE_RECORDED_EVENT));
     setForm(blank);
@@ -141,12 +159,24 @@ export default function Sales() {
             <div className="field"><label>Date *</label><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
             <div className="field">
               <label>Produit *</label>
-              <select value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })}>
+              <select value={form.productId} onChange={(e) => { setErr(''); setForm({ ...form, productId: e.target.value }); }}>
                 <option value="">-- Choisir --</option>
-                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {products.map((p) => {
+                  const st = stockStatus(p);
+                  const tag = st === 'out' ? ' · rupture' : st === 'low' ? ` · stock bas (${fmtN(p.stockQty)})` : '';
+                  return <option key={p.id} value={p.id}>{p.name}{tag}</option>;
+                })}
               </select>
             </div>
-            <div className="field"><label>Quantité *</label><input type="number" min="1" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} /></div>
+            <div className="field">
+              <label>Quantité *</label>
+              <input type="number" min="1" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} aria-describedby={product?.trackStock ? 'sale-stock' : undefined} />
+              {product?.trackStock && (
+                <span id="sale-stock" className={`sale-stock${product.stockQty <= 0 ? ' is-out' : ''}`}>
+                  <i className="ti ti-building-warehouse" aria-hidden="true" /> Stock : {fmtN(product.stockQty)}
+                </span>
+              )}
+            </div>
             <div className="field"><label>Nom du client</label><input value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} /></div>
             <div className="field"><label>Téléphone client</label><input value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} /></div>
             <div className="field" style={{ gridColumn: '1/-1' }}><label>Adresse du client</label><input value={form.clientAddress} onChange={(e) => setForm({ ...form, clientAddress: e.target.value })} placeholder="Quartier, ville…" /></div>
@@ -177,8 +207,17 @@ export default function Sales() {
               </span>
             </div>
           )}
+          {overStock && (
+            <div className={`stock-warn${blocked ? ' is-blocking' : ''}`} role="alert">
+              <i className="ti ti-alert-triangle" aria-hidden="true" />
+              {blocked
+                ? `Stock insuffisant : il reste ${fmtN(Math.max(product.stockQty, 0))} unité(s) de ${product.name}. Fais une entrée de stock ou baisse la quantité.`
+                : `Attention : il reste ${fmtN(product.stockQty)} unité(s). La vente passera et le stock deviendra négatif (autorisé dans tes paramètres).`}
+            </div>
+          )}
+          {err && <div className="stock-err" role="alert">{err}</div>}
           <div className="form-actions">
-            <button className="btn btn-dark btn-lg" onClick={submit}>Enregistrer la vente</button>
+            <button className="btn btn-dark btn-lg" onClick={submit} disabled={blocked || busy}>{busy ? 'Enregistrement…' : 'Enregistrer la vente'}</button>
             <button className="btn btn-ghost btn-lg" onClick={() => setOpen(false)}>Annuler</button>
           </div>
         </div>

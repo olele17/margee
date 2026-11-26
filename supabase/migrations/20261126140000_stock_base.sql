@@ -19,7 +19,7 @@ alter table public.products
 -- L'écran ne peut plus écrire que les colonnes « catalogue » :
 -- track_stock et stock_qty passent exclusivement par les fonctions.
 revoke insert, update on public.products from authenticated, anon;
-grant insert (name, category, price, cost_price) on public.products to authenticated;
+grant insert (name, category, price, cost_price, alert_threshold) on public.products to authenticated;
 grant update (name, category, price, cost_price, is_archived, alert_threshold) on public.products to authenticated;
 
 -- ── Paramètre du compte ───────────────────────────────────────────

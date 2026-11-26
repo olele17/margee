@@ -7,11 +7,12 @@ import InstallButton from '../pwa/InstallButton';
 import usePlans from '../hooks/usePlans';
 import { getPlanOffer } from '../utils/planOffer';
 import { fmt } from '../utils/calc';
-import { getMyPartnerAccess } from '../services/api';
+import { getMyPartnerAccess, getStockAlertCount, STOCK_CHANGED_EVENT } from '../services/api';
 
 const MENU_LINKS = [
   { to: '/app/dashboard', icon: 'ti-layout-dashboard', label: 'Dashboard' },
   { to: '/app/produits', icon: 'ti-package', label: 'Produits' },
+  { to: '/app/stock', icon: 'ti-building-warehouse', label: 'Stock', paid: true, stock: true },
   { to: '/app/ventes', icon: 'ti-receipt', label: 'Ventes' },
   { to: '/app/documents', icon: 'ti-file-invoice', label: 'Factures & devis' },
   { to: '/app/pubs', icon: 'ti-speakerphone', label: 'Pubs' },
@@ -31,6 +32,15 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
   const [isPartner, setIsPartner] = useState(false);
   useEffect(() => { getMyPartnerAccess().then(setIsPartner).catch(() => setIsPartner(false)); }, []);
   const { doLogout, account } = useAuth();
+  // Badge du lien Stock : ruptures + stocks bas
+  const [stockAlerts, setStockAlerts] = useState(0);
+  useEffect(() => {
+    if (!account?.id || !hasPaidPlan) { setStockAlerts(0); return undefined; }
+    const load = () => getStockAlertCount(account.id).then(setStockAlerts).catch(() => {});
+    load();
+    window.addEventListener(STOCK_CHANGED_EVENT, load);
+    return () => window.removeEventListener(STOCK_CHANGED_EVENT, load);
+  }, [account?.id, hasPaidPlan]);
   const catalog = usePlans();
   const offer = getPlanOffer(account, catalog);
   // Encart d'abonnement : essai, plan Pro (passer à Elite) ou abonnement expiré
@@ -74,6 +84,9 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
               <span>{l.label}</span>
             </div>
             {l.badge && <span className="sidebar-badge">{l.badge}</span>}
+            {l.stock && hasPaidPlan && stockAlerts > 0 && (
+              <span className="sidebar-badge sidebar-badge--gold" title={`${stockAlerts} produit(s) en rupture ou en stock bas`} aria-label={`${stockAlerts} alerte(s) de stock`}>{stockAlerts}</span>
+            )}
             {l.paid && !hasPaidPlan && <i className="ti ti-lock sidebar-lock" title="Disponible avec Pro ou Elite" aria-label="Réservé aux plans Pro et Elite" />}
           </NavLink>
         ))}
