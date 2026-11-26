@@ -621,7 +621,8 @@ export async function recordSale(accountId, sale) {
 }
 
 export async function deleteSale(accountId, saleId) {
-  const { error } = await requireSupabase().from('sales').delete().eq('id', saleId).eq('account_id', accountId);
+  // Fonction SQL : supprime la vente et remet le stock (même transaction)
+  const { error } = await requireSupabase().rpc('delete_sale', { p_sale_id: saleId });
   if (error) throw toDataError(error, 'Impossible de supprimer la vente. Réessaie.');
   return listSales(accountId);
 }
