@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
  * Sans clé de site, rien n'est affiché et aucun jeton n'est envoyé.
  * Un jeton ne sert qu'une fois : après un échec, change `resetKey`.
  */
-export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAGUHpwGdR6NcGNZZ';
 export const captchaEnabled = Boolean(TURNSTILE_SITE_KEY);
 
 let scriptPromise;
