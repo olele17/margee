@@ -4,8 +4,11 @@ import { LEGAL, PROVIDERS } from '../legal/legalInfo';
 import '../styles/legal.css';
 
 /** Pages légales : mentions, confidentialité, CGU/CGV, cookies. */
+// Mentions légales : en attente des informations de l'éditeur
+// (src/legal/legalInfo.js). Remettre `MENTIONS_ONLINE = true` pour la publier.
+const MENTIONS_ONLINE = false;
 export const LEGAL_PAGES = [
-  { path: '/mentions-legales', label: 'Mentions légales' },
+  ...(MENTIONS_ONLINE ? [{ path: '/mentions-legales', label: 'Mentions légales' }] : []),
   { path: '/confidentialite', label: 'Confidentialité' },
   { path: '/cgu', label: 'CGU / CGV' },
   { path: '/cookies', label: 'Cookies' },
@@ -80,7 +83,7 @@ function Privacy() {
       <p className="lg-lead">Cette politique explique quelles données {LEGAL.brand} utilise, pourquoi, combien de temps, et quels sont tes droits. Elle s'appuie sur la loi sénégalaise n° 2008-12 du 25 janvier 2008 sur la protection des données à caractère personnel.</p>
 
       <h2>1. Qui est responsable ?</h2>
-      <p>{LEGAL.editorName ? <><strong>{LEGAL.editorName}</strong>, éditeur de {LEGAL.brand},</> : <>L'éditeur de {LEGAL.brand} (voir les <Link to="/mentions-legales">mentions légales</Link>)</>} est responsable des données de ton compte. Pour les données de <strong>tes clients</strong> que tu enregistres dans {LEGAL.brand} (nom, téléphone, adresse sur une vente ou une facture), c'est <strong>toi</strong> le responsable : {LEGAL.brand} les conserve pour ton compte, comme un prestataire, et ne s'en sert jamais pour autre chose.</p>
+      <p>{LEGAL.editorName ? <><strong>{LEGAL.editorName}</strong>, éditeur de {LEGAL.brand},</> : (MENTIONS_ONLINE ? <>L'éditeur de {LEGAL.brand} (voir les <Link to="/mentions-legales">mentions légales</Link>)</> : <>L'éditeur de {LEGAL.brand}</>)} est responsable des données de ton compte. Pour les données de <strong>tes clients</strong> que tu enregistres dans {LEGAL.brand} (nom, téléphone, adresse sur une vente ou une facture), c'est <strong>toi</strong> le responsable : {LEGAL.brand} les conserve pour ton compte, comme un prestataire, et ne s'en sert jamais pour autre chose.</p>
 
       <h2>2. Les données utilisées</h2>
       <ul>
