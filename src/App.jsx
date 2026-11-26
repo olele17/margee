@@ -38,6 +38,7 @@ import DocumentEditor from './pages/app/DocumentEditor';
 import UpdatePrompt from './pwa/UpdatePrompt';
 import Challenges from './pages/app/Challenges';
 import GoogleCallback from './pages/GoogleCallback';
+import Stock from './pages/app/Stock';
 
 export default function App() {
   return (
@@ -82,6 +83,7 @@ export default function App() {
           >
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="produits" element={<Products />} />
+            <Route path="stock" element={<PaidOnly feature="stock"><Stock /></PaidOnly>} />
             <Route path="ventes" element={<Sales />} />
             <Route path="pubs" element={<Ads />} />
             <Route path="depenses" element={<PaidOnly feature="depenses"><Expenses /></PaidOnly>} />

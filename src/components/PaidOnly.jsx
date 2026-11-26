@@ -13,6 +13,11 @@ export function useHasPaidPlan() {
 }
 
 const FEATURES = {
+  stock: {
+    icon: 'ti-building-warehouse',
+    title: 'Stock',
+    text: "Sache à tout moment combien il te reste de chaque produit, sois alerté avant la rupture et vois combien d'argent dort dans ton stock.",
+  },
   depenses: {
     icon: 'ti-wallet',
     title: 'Dépenses',

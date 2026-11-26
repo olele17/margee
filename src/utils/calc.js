@@ -202,3 +202,80 @@ export function computeReceiptQuota(plan, usage = [], now = new Date(), docsUsed
     percent: Math.min((used / limit) * 100, 100),
   };
 }
+
+// ── STOCK ─────────────────────────────────────────────────────────
+// Statut d'un produit suivi : rupture (≤ 0), stock bas (≤ seuil), en stock.
+export const STOCK_STATUS = {
+  out: { label: 'Rupture', badge: 'danger', rank: 0 },
+  low: { label: 'Stock bas', badge: 'completed', rank: 1 },
+  ok: { label: 'En stock', badge: 'success', rank: 2 },
+};
+export function stockStatus(p) {
+  if (!p?.trackStock) return null;
+  if (p.stockQty <= 0) return 'out';
+  if (p.stockQty <= p.alertThreshold) return 'low';
+  return 'ok';
+}
+
+export const STOCK_MOVE_TYPES = {
+  initial: 'Stock initial',
+  entree: 'Entrée',
+  vente: 'Vente',
+  annulation_vente: 'Vente annulée',
+  ajustement: 'Ajustement',
+};
+export const STOCK_REASONS = {
+  inventaire: 'Inventaire',
+  perte: 'Perte',
+  casse: 'Casse',
+  vol: 'Vol',
+  erreur: 'Erreur de saisie',
+  cadeau: 'Cadeau',
+  autre: 'Autre',
+};
+
+/**
+ * Résumé du stock (produits suivis) :
+ * valeur au coût d'achat = Σ stock × coût de revient,
+ * valeur à la vente = Σ stock × prix, marge potentielle = différence.
+ * Un stock négatif compte pour 0 dans les valeurs.
+ */
+export function stockSummary(products) {
+  const tracked = products.filter((p) => p.trackStock);
+  const sum = (f) => tracked.reduce((a, p) => a + Math.max(p.stockQty, 0) * f(p), 0);
+  const costValue = sum((p) => p.costPrice);
+  const saleValue = sum((p) => p.price);
+  return {
+    tracked: tracked.length,
+    costValue,
+    saleValue,
+    margin: saleValue - costValue,
+    out: tracked.filter((p) => stockStatus(p) === 'out').length,
+    low: tracked.filter((p) => stockStatus(p) === 'low').length,
+  };
+}
+
+/** Ventes moyennes par jour d'un produit sur les N derniers jours (aujourd'hui compris). */
+export function avgDailySales(sales, productId, days = 30, now = today()) {
+  const from = new Date(`${now}T12:00:00Z`);
+  from.setUTCDate(from.getUTCDate() - (days - 1));
+  const start = from.toISOString().slice(0, 10);
+  const qty = sales.filter((s) => s.productId === productId && s.date >= start && s.date <= now)
+    .reduce((a, s) => a + s.qty, 0);
+  return qty / days;
+}
+
+/** Jours de stock restants = stock ÷ ventes moyennes par jour (null s'il n'y a eu aucune vente). */
+export function stockDaysLeft(p, sales, now = today()) {
+  const avg = avgDailySales(sales, p.id, 30, now);
+  if (!avg) return null;
+  return Math.max(0, Math.floor(Math.max(p.stockQty, 0) / avg));
+}
+
+/** Coût moyen pondéré (même formule que la base). */
+export function weightedCost(stockQty, currentCost, qty, unitCost) {
+  const base = Math.max(Number(stockQty) || 0, 0);
+  const q = Number(qty) || 0;
+  if (base + q <= 0) return Number(unitCost) || 0;
+  return Math.round((base * Number(currentCost || 0) + q * Number(unitCost || 0)) / (base + q));
+}

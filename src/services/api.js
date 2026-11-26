@@ -542,6 +542,9 @@ const mapProduct = (r) => ({
   category: r.category || '',
   costPrice: Number(r.cost_price),
   price: Number(r.price),
+  trackStock: !!r.track_stock,
+  stockQty: Number(r.stock_qty || 0),
+  alertThreshold: Number(r.alert_threshold ?? 5),
 });
 
 export async function listProducts(accountId) {
@@ -576,6 +579,74 @@ export async function deleteProduct(accountId, productId) {
     if (e2) throw toDataError(e2, 'Impossible de supprimer le produit. Réessaie.');
   }
   return listProducts(accountId);
+}
+
+// ── STOCK ─────────────────────────────────────────────────────────
+// Le stock est décidé par la base : chaque modification passe par une
+// fonction SQL (transaction + verrou sur le produit). L'écran ne fait
+// que lire products.stock_qty et le journal stock_moves.
+const mapStockMove = (r) => ({
+  id: r.id,
+  productId: r.product_id,
+  type: r.type,
+  quantity: Number(r.quantity),
+  unitCost: r.unit_cost == null ? null : Number(r.unit_cost),
+  reason: r.reason || '',
+  supplier: r.supplier || '',
+  note: r.note || '',
+  saleId: r.sale_id || null,
+  receiptNumber: r.sales?.receipt_number || null,
+  date: toDay(r.moved_at),
+  movedAt: r.moved_at,
+  createdAt: r.created_at,
+});
+
+export async function listStockMoves(accountId, { productId = null } = {}) {
+  const rows = await fetchAll(() => {
+    let q = requireSupabase().from('stock_moves').select('*, sales(receipt_number)').eq('account_id', accountId);
+    if (productId) q = q.eq('product_id', productId);
+    return q.order('moved_at', { ascending: false }).order('created_at', { ascending: false });
+  });
+  return rows.map(mapStockMove);
+}
+
+export async function setInitialStock(accountId, productId, quantity, unitCost = null) {
+  const { error } = await requireSupabase().rpc('set_initial_stock', {
+    p_product_id: productId,
+    p_quantity: Math.round(Number(quantity)),
+    p_unit_cost: unitCost === null || unitCost === '' ? null : toAmount(unitCost),
+  });
+  if (error) throw toDataError(error, "Impossible d'activer le suivi du stock. Réessaie.");
+}
+
+export async function disableStockTracking(accountId, productId) {
+  const { error } = await requireSupabase().rpc('disable_stock_tracking', { p_product_id: productId });
+  if (error) throw toDataError(error, "Impossible d'arrêter le suivi du stock. Réessaie.");
+}
+
+export async function addStockEntry(accountId, entry) {
+  const { data, error } = await requireSupabase().rpc('add_stock_entry', {
+    p_product_id: entry.productId,
+    p_quantity: Math.round(Number(entry.quantity)),
+    p_unit_cost: toAmount(entry.unitCost),
+    p_supplier: entry.supplier || null,
+    p_note: entry.note || null,
+    p_date: entry.date || null,
+    p_update_cost: !!entry.updateCost,
+  });
+  if (error) throw toDataError(error, "Impossible d'enregistrer l'entrée de stock. Réessaie.");
+  return { stockQty: Number(data.stock_qty), weightedCost: Number(data.weighted_cost), costPrice: Number(data.cost_price), costUpdated: !!data.cost_updated };
+}
+
+export async function adjustStock(accountId, { productId, realQuantity, reason, note }) {
+  const { data, error } = await requireSupabase().rpc('adjust_stock', {
+    p_product_id: productId,
+    p_real_quantity: Math.round(Number(realQuantity)),
+    p_reason: reason || null,
+    p_note: note || null,
+  });
+  if (error) throw toDataError(error, "Impossible d'ajuster le stock. Réessaie.");
+  return { stockQty: Number(data.stock_qty), delta: Number(data.delta) };
 }
 
 // ── VENTES + REÇUS ────────────────────────────────────────────────

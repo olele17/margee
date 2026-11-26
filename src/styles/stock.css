@@ -1,0 +1,87 @@
+/* ══ Stock : mêmes couleurs que l'app (noir, or, crème) ═══════════ */
+
+.kpi-grid.stock-kpis { grid-template-columns: repeat(5, 1fr); gap: 14px; }
+.stock-kpis .kpi-value { font-size: clamp(20px, 1.9vw, 28px); letter-spacing: -0.5px; }
+@media (max-width: 1200px) { .kpi-grid.stock-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .kpi-grid.stock-kpis { grid-template-columns: repeat(2, 1fr); } }
+
+.stock-tabs { margin-bottom: 16px; }
+
+/* Filtres */
+.stock-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.stock-filters input[type="search"], .stock-filters select, .stock-date input {
+  min-height: 40px; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md);
+  background: var(--bg-card); color: var(--dark-text); font: inherit; font-size: 13.5px;
+}
+.stock-filters input[type="search"] { flex: 1 1 220px; min-width: 0; }
+.stock-date { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-text); }
+
+/* Tableau */
+.stock-row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.stock-row-actions .btn { white-space: nowrap; }
+
+/* État vide */
+.stock-empty { text-align: center; padding: 40px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.stock-empty p { max-width: 460px; color: var(--muted-text); font-size: 15px; line-height: 1.55; }
+.stock-empty-icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; background: var(--badge-ok-bg); color: var(--gold-dark); }
+
+/* Produits non suivis (repliable) */
+.stock-untracked { margin-top: 20px; }
+.stock-untracked summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; font-weight: 700; color: var(--dark-text); min-height: 44px; }
+.stock-untracked summary::-webkit-details-marker { display: none; }
+.stock-untracked summary span { display: inline-flex; align-items: center; gap: 8px; }
+.stock-untracked[open] .stock-chevron { transform: rotate(180deg); }
+.stock-chevron { transition: transform 0.2s; color: var(--muted-text); }
+.stock-untracked ul { list-style: none; margin: 10px 0 0; padding: 0; }
+.stock-untracked li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-light); }
+
+/* Journal des mouvements */
+.stock-moves { list-style: none; margin: 0; padding: 0; text-align: left; }
+.stock-move { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border-light); }
+.stock-move:first-child { border-top: 0; }
+.stock-move-main { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.stock-move-qty { min-width: 52px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.stock-move-sub { font-size: 12.5px; color: var(--muted-text); margin-top: 2px; overflow-wrap: anywhere; }
+.stock-move-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--gold-dark-aa); text-decoration: none; white-space: nowrap; }
+.stock-move-link:hover { text-decoration: underline; }
+.stock-muted { color: var(--muted-text); font-size: 13.5px; }
+
+/* Fenêtres */
+.confirm-dialog.stock-dialog { max-width: 480px; text-align: left; }
+.stock-dialog .field label { text-align: left; }
+.confirm-dialog.stock-dialog--wide { max-width: 620px; }
+.stock-dialog-head { display: flex; align-items: center; gap: 12px; }
+.stock-dialog-head .confirm-icon { margin: 0; width: 44px; height: 44px; font-size: 22px; flex-shrink: 0; }
+.stock-dialog .confirm-message { text-align: left; }
+.stock-form .form-grid { margin-top: 14px; }
+.stock-dialog .preview-box { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-page); border: 1px solid var(--border-light); font-size: 14px; }
+.stock-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--badge-ok-bg); font-size: 13.5px; line-height: 1.45; color: var(--dark-text); cursor: pointer; }
+.stock-check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--gold-dark); flex-shrink: 0; }
+.stock-err { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--danger-bg); color: var(--danger); font-size: 13.5px; font-weight: 600; }
+.stock-actions-one { grid-template-columns: 1fr; }
+
+/* Message de confirmation */
+.stock-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; max-width: calc(100vw - 32px); padding: 12px 18px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); }
+
+/* ── Mobile : le tableau devient une liste de cartes ─────────────── */
+@media (max-width: 640px) {
+  .kpi-grid.stock-kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stock-kpis .kpi-card { padding: 14px; }
+  .stock-kpis .kpi-value { font-size: 20px; }
+  .stock-kpis .kpi-card:first-child { grid-column: 1 / -1; }
+  .stock-table thead { display: none; }
+  .stock-table, .stock-table tbody, .stock-table tr, .stock-table td { display: block; width: 100%; }
+  .stock-table tr { padding: 14px 16px; border-bottom: 1px solid var(--border-light); }
+  .stock-table td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: 0; text-align: right; }
+  .stock-table td::before { content: attr(data-label); font-weight: 600; color: var(--muted-text); text-align: left; }
+  .stock-table td[data-label="Produit"] { font-size: 16px; justify-content: flex-start; text-align: left; padding-bottom: 8px; }
+  .stock-table td[data-label="Produit"]::before { content: none; }
+  .stock-table td.stock-row-actions { justify-content: flex-start; padding-top: 10px; }
+  .stock-table td.stock-row-actions::before { content: none; }
+  .stock-table td.stock-row-actions .btn { flex: 1 1 auto; justify-content: center; min-height: 40px; }
+  .stock-move { flex-wrap: wrap; }
+  .stock-move-link { margin-left: 64px; }
+  .stock-date { flex: 1 1 140px; }
+  .stock-date input { flex: 1; min-width: 0; }
+  .stock-filters select { flex: 1 1 140px; min-width: 0; }
+}
