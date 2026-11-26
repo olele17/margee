@@ -153,7 +153,7 @@ export default function Sales() {
       )}
 
       {open && (
-        <div className="form-card">
+        <div className="form-card sale-form">
           <div className="form-card-title">Nouvelle vente</div>
           <div className="form-grid">
             <div className="field"><label>Date *</label><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>

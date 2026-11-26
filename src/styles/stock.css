@@ -132,3 +132,11 @@
 
 /* Aperçu (marge d'un produit, total d'une vente) : style manquant jusqu'ici */
 .form-card .preview-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-page); border: 1px solid var(--border-light); font-size: 14px; color: var(--dark-text); }
+
+/* Formulaire de vente sur téléphone : une seule colonne */
+@media (max-width: 640px) {
+  .sale-form .form-grid { grid-template-columns: 1fr; }
+  .sale-form .form-grid .field { grid-column: auto !important; }
+  .sale-form .form-actions { flex-wrap: wrap; }
+  .sale-form .form-actions .btn { flex: 1 1 100%; justify-content: center; }
+}
