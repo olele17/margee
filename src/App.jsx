@@ -39,6 +39,7 @@ import UpdatePrompt from './pwa/UpdatePrompt';
 import Challenges from './pages/app/Challenges';
 import GoogleCallback from './pages/GoogleCallback';
 import Stock from './pages/app/Stock';
+import Legal, { LEGAL_PAGES } from './pages/Legal';
 
 export default function App() {
   return (
@@ -52,6 +53,8 @@ export default function App() {
           <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
           <Route path="/reinitialiser-mot-de-passe" element={<ResetPassword />} />
           <Route path="/auth/google" element={<GoogleCallback />} />
+          {/* Pages légales */}
+          {LEGAL_PAGES.map((p) => <Route key={p.path} path={p.path} element={<Legal page={p.path} />} />)}
 
           {/* Subscription — logged in but not necessarily active yet */}
           <Route

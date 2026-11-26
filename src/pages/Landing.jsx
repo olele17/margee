@@ -4,6 +4,7 @@ import { ANNUAL_MONTHS_PAID, annualPrice } from '../services/api';
 import usePlans from '../hooks/usePlans';
 import InstallButton from '../pwa/InstallButton';
 import './Landing.css';
+import { LEGAL_PAGES } from './Legal';
 
 /* ══════════════════════════════════════════════════════════════
    LANDING MARGEE+ — identité propre : noir, or, crème, capitales.
@@ -548,6 +549,10 @@ function Footer() {
             <Link to="/inscription">Créer un compte</Link>
             <Link to="/connexion">Se connecter</Link>
             <InstallButton className="lp-footer-install" label="Installer l'app" icon="ti-device-mobile-down" />
+          </nav>
+          <nav className="lp-footer-col" aria-label="Informations légales">
+            <h2 className="lp-footer-title">Légal</h2>
+            {LEGAL_PAGES.map((p) => <Link key={p.path} to={p.path}>{p.label}</Link>)}
           </nav>
           <div className="lp-footer-col">
             <h2 className="lp-footer-title">Plans</h2>

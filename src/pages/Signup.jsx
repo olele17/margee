@@ -5,6 +5,7 @@ import { getSignupStatus } from '../services/api';
 import AuthShell from '../components/AuthShell';
 import Turnstile, { captchaEnabled, CAPTCHA_WAIT } from '../components/Turnstile';
 import GoogleButton from '../components/GoogleButton';
+import '../styles/legal.css';
 
 /* Inscriptions fermées depuis /admin/parametres : message de l'équipe */
 function SignupClosed({ message }) {
@@ -118,6 +119,9 @@ export default function Signup() {
         <button className="au-btn au-btn--gold" disabled={loading}>
           {loading ? 'Création…' : 'Créer mon compte'}
         </button>
+        <p className="au-legal">
+          En créant ton compte, tu acceptes les <Link to="/cgu">conditions d'utilisation et de vente</Link> et la <Link to="/confidentialite">politique de confidentialité</Link>.
+        </p>
       </form>
       <div className="au-switch">
         Déjà inscrit ? <Link to="/connexion">Se connecter</Link>

@@ -328,7 +328,7 @@
 
 /* Pied de page */
 .lp-footer { background: var(--lp-black); color: var(--lp-on-dark); padding: 72px 0 28px; overflow: hidden; }
-.lp-footer-grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 40px; }
+.lp-footer-grid { display: grid; grid-template-columns: 1.5fr repeat(4, 1fr); gap: 32px; }
 .lp-footer-brand { display: grid; gap: 18px; align-content: start; max-width: 340px; }
 .lp-footer-brand p { font-size: 14.5px; }
 .lp-footer-col { display: grid; gap: 2px; align-content: start; }

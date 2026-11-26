@@ -168,8 +168,8 @@ export default function DocumentEditor() {
                   <input aria-label={`Désignation, ligne ${i + 1}`} list="doc-products" value={it.description} maxLength={200}
                     onChange={(e) => { const v = e.target.value; if (products.some((p) => p.name === v)) pickProduct(i, v); else setLine(i, 'description', v); }}
                     placeholder="Produit ou prestation" />
-                  <input aria-label={`Quantité, ligne ${i + 1}`} inputMode="decimal" value={it.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} />
-                  <input aria-label={`Prix unitaire en F CFA, ligne ${i + 1}`} inputMode="numeric" value={it.unitPrice} onChange={(e) => setLine(i, 'unitPrice', e.target.value.replace(/[^\d]/g, ''))} placeholder="0" />
+                  <label className="doc-cell"><span className="doc-cell-label" aria-hidden="true">Qté</span><input aria-label={`Quantité, ligne ${i + 1}`} inputMode="decimal" value={it.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} /></label>
+                  <label className="doc-cell"><span className="doc-cell-label" aria-hidden="true">Prix unitaire (F)</span><input aria-label={`Prix unitaire en F CFA, ligne ${i + 1}`} inputMode="numeric" value={it.unitPrice} onChange={(e) => setLine(i, 'unitPrice', e.target.value.replace(/[^\d]/g, ''))} placeholder="0" /></label>
                   <span className="doc-line-total">{fmt(totals.lines[i] || 0)}</span>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeLine(i)} disabled={form.items.length === 1} aria-label={`Supprimer la ligne ${i + 1}`}><i className="ti ti-x" /></button>
                 </div>

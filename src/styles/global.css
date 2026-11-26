@@ -2081,3 +2081,8 @@ td.bold {
 .paid-lock-text { font-size: 15.5px; color: var(--dark-text); max-width: 480px; }
 .paid-lock-sub { font-size: 13.5px; color: var(--muted-text); max-width: 480px; }
 .paid-lock-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
+
+/* Petits téléphones : formulaires sur une seule colonne */
+@media (max-width: 480px) {
+  .form-grid { grid-template-columns: 1fr; }
+}

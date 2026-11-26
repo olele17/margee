@@ -72,3 +72,13 @@
 .doc-row-new td { background: var(--cream-2); animation: doc-flash 2.4s ease; }
 @keyframes doc-flash { from { background: var(--gold-light); } to { background: var(--cream-2); } }
 @media (prefers-reduced-motion: reduce) { .doc-row-new td { animation: none; } }
+
+/* Lignes de facture : libellés visibles sur téléphone (l'en-tête est masqué) */
+.doc-cell { display: block; min-width: 0; }
+.doc-cell input { width: 100%; }
+.doc-cell-label { display: none; }
+@media (max-width: 700px) {
+  .doc-cell-label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 700; color: var(--muted-text); }
+}
+/* Boutons longs : le texte passe à la ligne au lieu d'être coupé */
+.doc-save .btn { white-space: normal; text-align: center; line-height: 1.3; }
