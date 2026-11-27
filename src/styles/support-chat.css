@@ -64,7 +64,7 @@
 
 .sc-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-page); }
 .sc-empty { margin: auto; text-align: center; color: var(--muted-text); font-size: 13px; max-width: 260px; }
-.sc-empty i { font-size: 30px; color: var(--gold-dark); display: block; margin-bottom: 8px; }
+.sc-empty > i { font-size: 30px; color: var(--gold-dark); display: block; margin-bottom: 8px; }
 .sc-msg { display: flex; flex-direction: column; max-width: 82%; }
 .sc-msg--me { align-self: flex-end; align-items: flex-end; }
 .sc-msg--team { align-self: flex-start; align-items: flex-start; }

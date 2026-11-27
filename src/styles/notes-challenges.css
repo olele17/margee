@@ -23,7 +23,7 @@
   color: var(--muted-text);
   font-size: 14.5px;
 }
-.nc-empty i { font-size: 44px; color: var(--gold); }
+.nc-empty > i { font-size: 44px; color: var(--gold); }
 .nc-empty p { max-width: 420px; }
 
 /* ── Barre de recherche + filtres ────────────────────────────── */

@@ -1375,7 +1375,7 @@ td.bold {
   color: var(--muted-text);
 }
 
-.empty-state i {
+.empty-state > i {
   font-size: 44px;
   color: var(--subtle-text);
   margin-bottom: 12px;
